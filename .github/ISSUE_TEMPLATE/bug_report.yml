@@ -1,0 +1,26 @@
+name: Bug report
+description: Reportar inconsistência na documentação/planejamento
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Descrição
+      placeholder: O que está errado?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Como reproduzir
+      placeholder: Passos claros
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Resultado esperado
+      placeholder: O que você esperava
+    validations:
+      required: true

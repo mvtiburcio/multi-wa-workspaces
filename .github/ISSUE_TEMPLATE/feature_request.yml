@@ -1,0 +1,26 @@
+name: Feature request
+description: Propor melhoria de planejamento, arquitetura ou documentação
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema
+      placeholder: Qual dor queremos resolver?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposta
+      placeholder: Sugestão de solução
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impacto e riscos
+      placeholder: Ganhos, trade-offs e riscos
+    validations:
+      required: true

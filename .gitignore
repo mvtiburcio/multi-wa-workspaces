@@ -1,0 +1,30 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.mobileprovision
+*.key
+*.cer
+*.crt
+secrets/
+
+# Build artifacts
+build/
+DerivedData/
+.swiftpm/
+.package.resolved
+
+# Logs
+*.log
