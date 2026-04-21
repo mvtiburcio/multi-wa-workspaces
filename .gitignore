@@ -25,6 +25,7 @@ build/
 DerivedData/
 .swiftpm/
 .package.resolved
+.build/
 
 # Logs
 *.log
