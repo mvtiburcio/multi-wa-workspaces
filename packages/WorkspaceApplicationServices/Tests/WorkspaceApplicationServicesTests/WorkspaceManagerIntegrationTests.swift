@@ -103,4 +103,58 @@ struct WorkspaceManagerIntegrationTests {
     #expect(sessions.webViewsByWorkspaceID[first.id] == nil)
     #expect(sessions.webViewsByWorkspaceID[second.id] != nil)
   }
+
+  @Test
+  func restartKeepsManualReorder() async throws {
+    let initialStore = try WorkspaceStoreFactory.makeInMemoryStore()
+    let initialSessions = IntegrationFakeSessionController()
+    let firstManager = WorkspaceManager(
+      store: initialStore,
+      sessionController: initialSessions,
+      dataStoreRemover: { _ in }
+    )
+
+    let first = try await firstManager.create(name: "A")
+    let second = try await firstManager.create(name: "B")
+    let third = try await firstManager.create(name: "C")
+
+    try await firstManager.reorder(fromOffsets: IndexSet(integer: 2), toOffset: 0)
+
+    let restartedStore = SwiftDataWorkspaceStore(container: initialStore.container)
+    let restartedSessions = IntegrationFakeSessionController()
+    let secondManager = WorkspaceManager(
+      store: restartedStore,
+      sessionController: restartedSessions,
+      dataStoreRemover: { _ in }
+    )
+
+    let loaded = try await secondManager.list()
+    #expect(loaded.map(\.id) == [third.id, first.id, second.id])
+  }
+
+  @Test
+  func restartKeepsIconMetadata() async throws {
+    let initialStore = try WorkspaceStoreFactory.makeInMemoryStore()
+    let initialSessions = IntegrationFakeSessionController()
+    let firstManager = WorkspaceManager(
+      store: initialStore,
+      sessionController: initialSessions,
+      dataStoreRemover: { _ in }
+    )
+
+    let workspace = try await firstManager.create(name: "A")
+    let iconPath = "workspace-icons/\(workspace.id.uuidString).png"
+    try await firstManager.setIconAssetPath(id: workspace.id, iconAssetPath: iconPath)
+
+    let restartedStore = SwiftDataWorkspaceStore(container: initialStore.container)
+    let restartedSessions = IntegrationFakeSessionController()
+    let secondManager = WorkspaceManager(
+      store: restartedStore,
+      sessionController: restartedSessions,
+      dataStoreRemover: { _ in }
+    )
+
+    let loaded = try await secondManager.list()
+    #expect(loaded.first(where: { $0.id == workspace.id })?.iconAssetPath == iconPath)
+  }
 }

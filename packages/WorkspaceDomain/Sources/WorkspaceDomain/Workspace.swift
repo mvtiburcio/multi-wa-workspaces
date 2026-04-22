@@ -15,6 +15,7 @@ public struct Workspace: Identifiable, Hashable, Sendable {
   public var colorTag: String
   public let dataStoreID: UUID
   public var state: WorkspaceState
+  public var iconAssetPath: String?
   public let createdAt: Date
   public var lastOpenedAt: Date?
 
@@ -24,6 +25,7 @@ public struct Workspace: Identifiable, Hashable, Sendable {
     colorTag: String,
     dataStoreID: UUID = UUID(),
     state: WorkspaceState = .cold,
+    iconAssetPath: String? = nil,
     createdAt: Date = Date(),
     lastOpenedAt: Date? = nil
   ) {
@@ -32,6 +34,7 @@ public struct Workspace: Identifiable, Hashable, Sendable {
     self.colorTag = colorTag
     self.dataStoreID = dataStoreID
     self.state = state
+    self.iconAssetPath = iconAssetPath
     self.createdAt = createdAt
     self.lastOpenedAt = lastOpenedAt
   }

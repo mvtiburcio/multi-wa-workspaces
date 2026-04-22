@@ -10,6 +10,8 @@ public final class WorkspaceRecord {
   public var colorTag: String
   public var dataStoreID: UUID
   public var stateRawValue: String
+  public var sortOrder: Int?
+  public var iconAssetPath: String?
   public var createdAt: Date
   public var lastOpenedAt: Date?
 
@@ -19,6 +21,8 @@ public final class WorkspaceRecord {
     colorTag: String,
     dataStoreID: UUID,
     stateRawValue: String,
+    sortOrder: Int?,
+    iconAssetPath: String?,
     createdAt: Date,
     lastOpenedAt: Date?
   ) {
@@ -27,6 +31,8 @@ public final class WorkspaceRecord {
     self.colorTag = colorTag
     self.dataStoreID = dataStoreID
     self.stateRawValue = stateRawValue
+    self.sortOrder = sortOrder
+    self.iconAssetPath = iconAssetPath
     self.createdAt = createdAt
     self.lastOpenedAt = lastOpenedAt
   }
@@ -40,6 +46,7 @@ extension WorkspaceRecord {
       colorTag: colorTag,
       dataStoreID: dataStoreID,
       state: WorkspaceState(rawValue: stateRawValue) ?? .failed,
+      iconAssetPath: iconAssetPath,
       createdAt: createdAt,
       lastOpenedAt: lastOpenedAt
     )

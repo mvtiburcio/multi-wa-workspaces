@@ -4,6 +4,8 @@ public enum WorkspaceError: LocalizedError, Sendable {
   case workspaceNotFound(UUID)
   case invalidWorkspaceName
   case duplicateWorkspaceName
+  case invalidIconAssetPath
+  case invalidWorkspaceOrder
   case sessionTeardownFailed(UUID, String)
   case dataStoreRemovalFailed(UUID, String)
 
@@ -15,6 +17,10 @@ public enum WorkspaceError: LocalizedError, Sendable {
       return "Nome do workspace inválido."
     case .duplicateWorkspaceName:
       return "Já existe workspace com esse nome."
+    case .invalidIconAssetPath:
+      return "Caminho de ícone inválido para o workspace."
+    case .invalidWorkspaceOrder:
+      return "Ordem de workspaces inválida."
     case let .sessionTeardownFailed(id, reason):
       return "Falha ao encerrar sessão do workspace \(id.uuidString): \(reason)"
     case let .dataStoreRemovalFailed(id, reason):

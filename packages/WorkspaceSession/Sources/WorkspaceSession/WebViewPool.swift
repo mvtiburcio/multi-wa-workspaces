@@ -11,11 +11,15 @@ public final class WebViewPool {
     var lastAccessedAt: Date
   }
 
-  public let maxWarmWebViews: Int
+  public let maxWarmWebViews: Int?
   private var entries: [UUID: Entry] = [:]
 
-  public init(maxWarmWebViews: Int = 2) {
-    self.maxWarmWebViews = max(1, maxWarmWebViews)
+  public init(maxWarmWebViews: Int? = nil) {
+    if let maxWarmWebViews {
+      self.maxWarmWebViews = max(1, maxWarmWebViews)
+    } else {
+      self.maxWarmWebViews = nil
+    }
   }
 
   public var cachedWorkspaceIDs: [UUID] {
@@ -44,8 +48,10 @@ public final class WebViewPool {
 
     let config = WKWebViewConfiguration()
     config.websiteDataStore = WebsiteDataStoreManager.dataStore(for: workspace.dataStoreID)
+    config.defaultWebpagePreferences.allowsContentJavaScript = true
 
     let webView = WKWebView(frame: .zero, configuration: config)
+    webView.customUserAgent = UserAgentProfile.whatsAppDesktopSafari
     entries[workspace.id] = Entry(
       workspaceID: workspace.id,
       dataStoreID: workspace.dataStoreID,
@@ -75,6 +81,10 @@ public final class WebViewPool {
   }
 
   private func evictIfNeeded(excluding workspaceID: UUID) {
+    guard let maxWarmWebViews else {
+      return
+    }
+
     while entries.count > maxWarmWebViews {
       let candidate = entries
         .values

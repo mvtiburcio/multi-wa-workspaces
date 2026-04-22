@@ -19,6 +19,17 @@ Data de referência: 21 de abril de 2026.
 - [x] CI de build/test macOS.
 
 ## Fase 2 - Robustez (pendente)
+- [x] sidebar fixa lado a lado (sem sobreposição no conteúdo);
+- [x] reordenação manual de workspaces com persistência;
+- [x] seleção de workspace com fluxo mais estável (idempotência + serialização);
+- [x] rail de ícones com flyout por hover;
+- [x] ações no header do flyout para `Editar` e `Config` (sem navegação por abas);
+- [x] edição em lote para exclusão e ordenação por drag;
+- [x] ícone/foto opcional por workspace com persistência local;
+- [x] recorte manual de avatar antes de salvar o ícone;
+- [x] fila local de limpeza pendente para datastores em uso;
+- [x] flyout com gatilho único no botão menu (hambúrguer);
+- [x] rail recolhido com todos os workspaces e troca rápida sem abrir flyout;
 - monitoramento técnico expandido (métricas por workspace);
 - otimização de memória para cenários com muitos workspaces;
 - testes de estabilidade de longa duração;
