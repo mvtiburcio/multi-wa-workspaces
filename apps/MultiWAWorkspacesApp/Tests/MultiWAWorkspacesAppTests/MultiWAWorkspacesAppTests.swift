@@ -1,6 +1,6 @@
 import AppKit
 import Testing
-@testable import WASpaces
+@testable import WASpacesMac
 import WorkspaceDomain
 
 struct WASpacesTests {
@@ -17,6 +17,7 @@ struct WASpacesTests {
     first.setNotificationsEnabled(false)
     first.setShowBadges(false)
     first.setDefaultWorkspaceID(workspaceID)
+    first.setSessionRuntimeMode(.bridgeRealtime)
 
     let second = WorkspaceUISettingsStore(userDefaults: defaults)
     let loaded = second.settings
@@ -24,6 +25,7 @@ struct WASpacesTests {
     #expect(loaded.notificationsEnabled == false)
     #expect(loaded.showBadges == false)
     #expect(loaded.defaultWorkspaceID == workspaceID)
+    #expect(loaded.sessionRuntimeMode == .bridgeRealtime)
 
     defaults.removePersistentDomain(forName: suiteName)
   }
@@ -138,6 +140,13 @@ struct WASpacesTests {
     #expect(WorkspaceUnreadBadgeFormatter.text(for: 1) == "1")
     #expect(WorkspaceUnreadBadgeFormatter.text(for: 99) == "99")
     #expect(WorkspaceUnreadBadgeFormatter.text(for: 100) == "99+")
+  }
+
+  @Test
+  func sessionRuntimeModeMetadataHasStableTitles() {
+    #expect(SessionRuntimeMode.localLegacy.title == "Local (legado)")
+    #expect(SessionRuntimeMode.bridgeRealtime.title == "Bridge em tempo real")
+    #expect(SessionRuntimeMode.bridgeFallbackWebView.title == "Fallback WebView")
   }
 
   @Test

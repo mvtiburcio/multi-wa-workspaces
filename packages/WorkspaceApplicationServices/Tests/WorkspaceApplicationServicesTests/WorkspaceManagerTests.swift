@@ -2,6 +2,7 @@ import Foundation
 import Testing
 import WebKit
 @testable import WorkspaceApplicationServices
+import WorkspaceBridgeContracts
 import WorkspaceDomain
 import WorkspaceSession
 
@@ -132,6 +133,29 @@ final class FakeReportingSessionController: WebSessionControlling, WebSessionSta
 
   func emitState(workspaceID: UUID, state: WorkspaceState) {
     onStateChange?(workspaceID, state)
+  }
+}
+
+@MainActor
+final class FakeUnreadReportingSessionController: WebSessionControlling, WebSessionUnreadReporting {
+  var onUnreadCountChange: (@MainActor (UUID, Int, Int) -> Void)?
+  private(set) var webViewsByWorkspaceID: [UUID: WKWebView] = [:]
+
+  func webView(for workspace: Workspace) async throws -> WKWebView {
+    if let existing = webViewsByWorkspaceID[workspace.id] {
+      return existing
+    }
+    let webView = WKWebView(frame: .zero)
+    webViewsByWorkspaceID[workspace.id] = webView
+    return webView
+  }
+
+  func destroySession(for workspaceID: UUID) async throws {
+    webViewsByWorkspaceID.removeValue(forKey: workspaceID)
+  }
+
+  func emitUnread(workspaceID: UUID, previous: Int, current: Int) {
+    onUnreadCountChange?(workspaceID, previous, current)
   }
 }
 
@@ -392,5 +416,49 @@ struct WorkspaceManagerTests {
 
     #expect(store.listCallCount == 0)
     #expect(manager.workspaces.first(where: { $0.id == workspace.id })?.state == .connected)
+  }
+
+  @Test
+  func bridgeSnapshotUpdatesStateAndUnreadWithoutWebViewEvents() async throws {
+    let store = InMemoryWorkspaceStore()
+    let sessions = FakeSessionController()
+    let manager = WorkspaceManager(
+      store: store,
+      sessionController: sessions,
+      dataStoreRemover: { _ in }
+    )
+
+    let workspace = try await manager.create(name: "A")
+    manager.applyBridgeWorkspaceSnapshot(
+      WorkspaceSnapshot(
+        id: workspace.id,
+        name: workspace.name,
+        connectivity: .connected,
+        unreadTotal: 9,
+        lastSyncAt: Date(),
+        workerState: .running
+      )
+    )
+
+    #expect(manager.workspaces.first(where: { $0.id == workspace.id })?.state == .connected)
+    #expect(manager.unreadByWorkspace[workspace.id] == 9)
+  }
+
+  @Test
+  func localUnreadIsIgnoredWhenBridgeRealtimeIsEnabled() async throws {
+    let store = InMemoryWorkspaceStore()
+    let sessions = FakeUnreadReportingSessionController()
+    let manager = WorkspaceManager(
+      store: store,
+      sessionController: sessions,
+      dataStoreRemover: { _ in }
+    )
+
+    let workspace = try await manager.create(name: "A")
+    manager.setBridgeRealtimeEnabled(true)
+    sessions.emitUnread(workspaceID: workspace.id, previous: 0, current: 7)
+    await Task.yield()
+
+    #expect(manager.unreadByWorkspace[workspace.id] == nil)
   }
 }

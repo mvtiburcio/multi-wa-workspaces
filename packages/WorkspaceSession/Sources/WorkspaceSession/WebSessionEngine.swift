@@ -14,7 +14,7 @@ public protocol WebSessionUnreadReporting: AnyObject {
 }
 
 @MainActor
-public final class WebSessionEngine: NSObject, WebSessionControlling, WebSessionStateReporting, WebSessionUnreadReporting {
+public final class WebSessionEngine: NSObject, WebSessionControlling, WebSessionStateReporting, WebSessionUnreadReporting, WebSessionDiagnosticsReporting, WebSessionWarmPoolControlling {
   public var onStateChange: (@MainActor (UUID, WorkspaceState) -> Void)?
   public var onUnreadCountChange: (@MainActor (UUID, Int, Int) -> Void)?
 
@@ -108,6 +108,18 @@ public final class WebSessionEngine: NSObject, WebSessionControlling, WebSession
       result: "success",
       startedAt: startedAt
     )
+  }
+
+  public func diagnostics() -> WebSessionDiagnostics {
+    WebSessionDiagnostics(
+      cachedWebViewCount: pool.cachedCount,
+      trackedWebViewCount: webViewWorkspaceMap.count,
+      trackedWorkspaceCount: Set(webViewWorkspaceMap.values).count
+    )
+  }
+
+  public func setWarmWebViewLimit(_ limit: Int?) {
+    pool.setMaxWarmWebViews(limit)
   }
 
   private func log(

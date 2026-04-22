@@ -156,6 +156,7 @@ struct WorkspaceShellView: View {
   @ObservedObject var manager: WorkspaceManager
   let iconAssetStore: WorkspaceIconAssetStore
   @ObservedObject var uiSettingsStore: WorkspaceUISettingsStore
+  let activeRuntimeMode: SessionRuntimeMode
   let processPendingCleanupNow: @MainActor () async -> Void
   let reloadActiveWorkspaceNow: @MainActor () async throws -> Void
 
@@ -186,12 +187,14 @@ struct WorkspaceShellView: View {
     manager: WorkspaceManager,
     iconAssetStore: WorkspaceIconAssetStore,
     uiSettingsStore: WorkspaceUISettingsStore,
+    activeRuntimeMode: SessionRuntimeMode,
     processPendingCleanupNow: @escaping @MainActor () async -> Void = {},
     reloadActiveWorkspaceNow: @escaping @MainActor () async throws -> Void = {}
   ) {
     self.manager = manager
     self.iconAssetStore = iconAssetStore
     self.uiSettingsStore = uiSettingsStore
+    self.activeRuntimeMode = activeRuntimeMode
     self.processPendingCleanupNow = processPendingCleanupNow
     self.reloadActiveWorkspaceNow = reloadActiveWorkspaceNow
   }
@@ -528,6 +531,34 @@ struct WorkspaceShellView: View {
       VStack(alignment: .leading, spacing: 18) {
         GroupBox("Preferências") {
           VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+              Text("Modo de runtime")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+              Picker(
+                "Modo de runtime",
+                selection: Binding(
+                  get: { uiSettingsStore.settings.sessionRuntimeMode },
+                  set: { uiSettingsStore.setSessionRuntimeMode($0) }
+                )
+              ) {
+                ForEach(SessionRuntimeMode.allCases) { mode in
+                  Text(mode.title).tag(mode)
+                }
+              }
+
+              if activeRuntimeMode != uiSettingsStore.settings.sessionRuntimeMode {
+                Text("Ativo agora: \(activeRuntimeMode.title)")
+                  .font(.caption2)
+                  .foregroundStyle(.orange)
+              } else {
+                Text(activeRuntimeMode.description)
+                  .font(.caption2)
+                  .foregroundStyle(.secondary)
+              }
+            }
+
             Toggle(
               "Notificações do app",
               isOn: Binding(
