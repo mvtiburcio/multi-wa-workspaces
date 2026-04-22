@@ -13,7 +13,7 @@ swift test
 
 ## Execução da aplicação
 ```bash
-swift run MultiWAWorkspacesApp
+swift run WASpaces
 ```
 
 ## Módulos de código

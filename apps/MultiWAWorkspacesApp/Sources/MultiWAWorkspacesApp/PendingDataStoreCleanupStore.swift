@@ -47,7 +47,7 @@ final class PendingDataStoreCleanupProcessor {
 
   init(
     queueStore: PendingDataStoreCleanupStore,
-    logger: Logger = Logger(subsystem: "com.multiwa.workspaces", category: "pending_datastore_cleanup"),
+    logger: Logger = Logger(subsystem: "com.waspaces.app", category: "pending_datastore_cleanup"),
     remover: @escaping @MainActor @Sendable (UUID) async throws -> Void,
     isRecoverableError: @escaping @MainActor @Sendable (Error) -> Bool
   ) {

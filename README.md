@@ -1,4 +1,4 @@
-# Workspaces QR for WhatsApp Web
+# WASpaces
 
 Projeto open source para operar múltiplos workspaces de WhatsApp Web com isolamento de sessão por QR, usando app macOS em SwiftUI + WebKit.
 
@@ -26,7 +26,7 @@ Entregue nesta versão:
 ```bash
 swift build
 swift test
-swift run MultiWAWorkspacesApp
+swift run WASpaces
 ```
 
 ## Estrutura

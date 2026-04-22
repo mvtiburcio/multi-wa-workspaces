@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-  name: "MultiWAWorkspaces",
+  name: "WASpaces",
   defaultLocalization: "pt-BR",
   platforms: [
     .macOS(.v14)
@@ -12,7 +12,7 @@ let package = Package(
     .library(name: "WorkspacePersistence", targets: ["WorkspacePersistence"]),
     .library(name: "WorkspaceSession", targets: ["WorkspaceSession"]),
     .library(name: "WorkspaceApplicationServices", targets: ["WorkspaceApplicationServices"]),
-    .executable(name: "MultiWAWorkspacesApp", targets: ["MultiWAWorkspacesApp"])
+    .executable(name: "WASpaces", targets: ["WASpaces"])
   ],
   targets: [
     .target(
@@ -55,13 +55,13 @@ let package = Package(
       path: "packages/WorkspaceApplicationServices/Tests/WorkspaceApplicationServicesTests"
     ),
     .executableTarget(
-      name: "MultiWAWorkspacesApp",
+      name: "WASpaces",
       dependencies: ["WorkspaceDomain", "WorkspacePersistence", "WorkspaceSession", "WorkspaceApplicationServices"],
       path: "apps/MultiWAWorkspacesApp/Sources/MultiWAWorkspacesApp"
     ),
     .testTarget(
-      name: "MultiWAWorkspacesAppTests",
-      dependencies: ["MultiWAWorkspacesApp"],
+      name: "WASpacesTests",
+      dependencies: ["WASpaces"],
       path: "apps/MultiWAWorkspacesApp/Tests/MultiWAWorkspacesAppTests"
     )
   ]

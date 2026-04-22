@@ -12,7 +12,7 @@ final class WorkspaceIconAssetStore {
     self.fileManager = fileManager
 
     let appSupportURL = try Self.applicationSupportDirectory(fileManager: fileManager)
-    let baseDirectoryURL = appSupportURL.appendingPathComponent("com.multiwa.workspaces", isDirectory: true)
+    let baseDirectoryURL = appSupportURL.appendingPathComponent("com.waspaces.app", isDirectory: true)
     let iconsDirectoryURL = baseDirectoryURL.appendingPathComponent("workspace-icons", isDirectory: true)
 
     self.baseDirectoryURL = baseDirectoryURL

@@ -5,7 +5,7 @@ import WorkspacePersistence
 import WorkspaceSession
 
 @main
-struct MultiWAWorkspacesApp: App {
+struct WASpacesApp: App {
   @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
   @StateObject private var manager: WorkspaceManager
   @StateObject private var uiSettingsStore: WorkspaceUISettingsStore

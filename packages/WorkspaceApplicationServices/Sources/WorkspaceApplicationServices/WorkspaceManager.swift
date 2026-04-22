@@ -29,7 +29,7 @@ public final class WorkspaceManager: ObservableObject, WorkspaceManaging {
   public init(
     store: WorkspaceStoring,
     sessionController: WebSessionControlling,
-    logger: Logger = Logger(subsystem: "com.multiwa.workspaces", category: "workspace_manager"),
+    logger: Logger = Logger(subsystem: "com.waspaces.app", category: "workspace_manager"),
     dataStoreRemover: @escaping @MainActor @Sendable (UUID) async throws -> Void = { identifier in
       try await WebsiteDataStoreManager.removeDataStore(for: identifier)
     },

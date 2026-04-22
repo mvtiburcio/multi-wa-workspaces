@@ -1,9 +1,9 @@
 import AppKit
 import Testing
-@testable import MultiWAWorkspacesApp
+@testable import WASpaces
 import WorkspaceDomain
 
-struct MultiWAWorkspacesAppTests {
+struct WASpacesTests {
   @Test
   @MainActor
   func settingsStorePersistsReducedShape() {

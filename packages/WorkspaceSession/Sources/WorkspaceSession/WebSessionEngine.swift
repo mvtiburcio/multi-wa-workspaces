@@ -30,7 +30,7 @@ public final class WebSessionEngine: NSObject, WebSessionControlling, WebSession
 
   public init(
     pool: WebViewPool = WebViewPool(),
-    logger: Logger = Logger(subsystem: "com.multiwa.workspaces", category: "web_session_engine")
+    logger: Logger = Logger(subsystem: "com.waspaces.app", category: "web_session_engine")
   ) {
     self.pool = pool
     self.logger = logger
@@ -207,7 +207,7 @@ extension WebSessionEngine: WKNavigationDelegate {
     let script = """
       (() => {
         const expectedWorkspaceID = '\(workspaceID.uuidString)';
-        const markerKey = '__multiwa_workspace_id';
+        const markerKey = '__waspaces_workspace_id';
 
         const readyState = document.readyState || 'unknown';
         const hasQR = !!document.querySelector('[data-testid="qrcode"]')

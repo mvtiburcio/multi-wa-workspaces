@@ -4,7 +4,7 @@ import WebKit
 
 @MainActor
 public enum WebsiteDataStoreManager {
-  private static let logger = Logger(subsystem: "com.multiwa.workspaces", category: "website_data_store")
+  private static let logger = Logger(subsystem: "com.waspaces.app", category: "website_data_store")
 
   public static func dataStore(for identifier: UUID) -> WKWebsiteDataStore {
     WKWebsiteDataStore(forIdentifier: identifier)
