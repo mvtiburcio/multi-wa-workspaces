@@ -17,9 +17,9 @@ Data de referência: 21 de abril de 2026.
 - [x] tratamento de remoção resiliente de datastore em uso;
 - [x] testes unitários/integração e CI macOS.
 
-## Fase 2 - Gate de Conformidade App Store (obrigatória antes do iOS)
+## Fase 2 - Gate de Conformidade App Store (obrigatória para release iOS)
 
-Status: pendente.
+Status: em andamento.
 
 Critério de go/no-go:
 
@@ -36,7 +36,7 @@ Saída esperada:
 
 ## Fase 3 - iOS Full Native (iPhone-first)
 
-Status: pendente.
+Status: em andamento (Sprint 1 internal-only).
 
 Escopo funcional v1:
 
@@ -51,6 +51,7 @@ Regras desta fase:
 - UI/UX 100% nativa iOS (não replicar design do WhatsApp Web);
 - parsing e normalização orientados a contrato interno de dados;
 - fallback híbrido controlado quando parser falhar.
+- sem `go` formal de compliance, build iOS não segue para distribuição pública.
 
 ## Fase 4 - Session Bridge Cloud (tempo real contínuo)
 

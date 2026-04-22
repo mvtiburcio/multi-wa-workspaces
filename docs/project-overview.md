@@ -29,4 +29,4 @@ Antes do desenvolvimento Swift iOS, o projeto exige gate formal de conformidade 
 
 ## Escopo desta rodada
 
-Esta etapa é de planejamento e alinhamento documental. Não há mudança de código Swift nesta entrega.
+Esta etapa evoluiu para implementação inicial iOS Sprint 1 (`internal-only`) em paralelo ao gate de conformidade.

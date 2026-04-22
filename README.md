@@ -7,6 +7,7 @@ Atualmente, a base implementada está na POC macOS via WebKit. A trilha iOS nati
 
 `POC macOS v1 implementada` em 21 de abril de 2026.
 `Planejamento iOS Native UI` documentado em 22 de abril de 2026.
+`Implementação iOS + Session Bridge MVP` iniciada em 22 de abril de 2026 (internal-only).
 
 Entregue nesta versão:
 
@@ -20,7 +21,9 @@ Entregue nesta versão:
 - badges de mensagens não lidas no rail e no flyout sem clipping visual;
 - configurações funcionais locais (badges, notificações e workspace padrão, com ações de manutenção);
 - remoção resiliente de workspace quando datastore estiver temporariamente em uso (fila local de limpeza pendente);
-- testes unitários/integrados e CI com build/test macOS.
+- testes unitários/integrados e CI com build/test macOS;
+- Session Bridge MVP com `Swift Vapor + SQLite + Bearer Token` (`sync`, `events`, `send`, `qr`);
+- app iOS nativo gerado por `xcodegen` em `apps/WASpacesiOSApp` com modo demo visual por padrão e suporte a Bridge HTTP/SSE real por configuração.
 
 ## Requisitos
 
@@ -32,7 +35,15 @@ Entregue nesta versão:
 ```bash
 swift build
 swift test
+swift run WASpacesMac
+# legado compatível:
 swift run WASpaces
+# target iOS (host macOS mostra stub)
+swift run WASpacesiOS
+# Session Bridge MVP
+swift run SessionBridgeServer
+# gerar projeto iOS instalável
+xcodegen generate --spec apps/WASpacesiOSApp/project.yml
 ```
 
 ## Estrutura
@@ -42,6 +53,10 @@ swift run WASpaces
 - `packages/WorkspacePersistence`: persistência SwiftData
 - `packages/WorkspaceSession`: engine WebKit, pool e datastore
 - `packages/WorkspaceApplicationServices`: `WorkspaceManager` e orquestração
+- `packages/WorkspaceBridgeContracts`: contratos de sync/realtime/send para Session Bridge
+- `apps/WASpacesiOS`: app iOS Sprint 1 com fluxo nativo e providers mockáveis
+- `bridge/SessionBridgeServer`: backend bridge MVP (Vapor + SQLite + SSE + auth Bearer)
+- `apps/WASpacesiOSApp`: projeto iOS nativo (`.xcodeproj`) para simulador/dispositivo
 
 ## Documentação
 
@@ -55,6 +70,8 @@ swift run WASpaces
 - [Guia de Desenvolvimento Local](./docs/local-development.md)
 - [Critérios de Aceite da POC](./docs/poc-acceptance.md)
 - [Riscos e Limites](./docs/risks-and-limits.md)
+- [Session Bridge: Especificação Operacional](./docs/bridge/session-bridge-operational-spec.md)
+- [Gate App Store: Checklist](./docs/compliance/app-store-gate-checklist.md)
 - [Segurança Open Source](./docs/security-open-source.md)
 - [ADR-0001: Estratégia de Sessões](./docs/adr/0001-workspace-session-isolation.md)
 - [ADR-0002: iOS Native + Session Bridge](./docs/adr/0002-ios-native-session-bridge.md)
@@ -68,4 +85,4 @@ swift run WASpaces
 
 ## Aviso importante
 
-A POC atual segue o modelo QR-only em WebKit no macOS. A trilha iOS exige gate obrigatório de conformidade App Store e arquitetura com Session Bridge Cloud antes da codificação. O uso de serviços de terceiros deve respeitar os termos e políticas vigentes desses serviços.
+A POC atual segue o modelo QR-only em WebKit no macOS. A trilha iOS está em Sprint 1 com fluxo `internal-only` e exige gate formal de conformidade App Store para qualquer distribuição. O uso de serviços de terceiros deve respeitar os termos e políticas vigentes desses serviços.

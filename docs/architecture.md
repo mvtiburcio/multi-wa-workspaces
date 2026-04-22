@@ -59,6 +59,7 @@ Responsabilidades:
 - `FallbackRenderState`
 
 Os contratos detalhados estão em [`technical-plan-ios-native-ui.md`](./technical-plan-ios-native-ui.md).
+Implementação inicial desses contratos no código está no módulo `WorkspaceBridgeContracts`.
 
 ## Princípios Arquiteturais
 
