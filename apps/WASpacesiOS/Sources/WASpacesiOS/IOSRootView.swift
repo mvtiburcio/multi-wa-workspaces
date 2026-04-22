@@ -473,6 +473,12 @@ private struct WorkspaceSwitcherSheet: View {
           }
         }
       }
+      .task(id: viewModel.selectedWorkspaceID) {
+        guard viewModel.selectedWorkspaceID != nil else {
+          return
+        }
+        await refreshQRLoopIfNeeded()
+      }
     }
   }
 
@@ -518,6 +524,19 @@ private struct WorkspaceSwitcherSheet: View {
       return "Desconectado"
     }
   }
+
+  private func refreshQRLoopIfNeeded() async {
+    while !Task.isCancelled {
+      guard let workspace = viewModel.selectedWorkspace else {
+        return
+      }
+      let shouldRefresh = workspace.connectivity == .qrRequired || workspace.connectivity == .connecting
+      if shouldRefresh {
+        await viewModel.reloadQRCodeForSelectedWorkspace()
+      }
+      try? await Task.sleep(for: .seconds(8))
+    }
+  }
 }
 
 private struct QRCodeCard: View {
@@ -544,11 +563,13 @@ private struct QRCodeCard: View {
           .foregroundStyle(.secondary)
       }
 
-      Text(payload)
-        .font(.caption2.monospaced())
-        .lineLimit(2)
-        .truncationMode(.middle)
-        .textSelection(.enabled)
+      if !payload.hasPrefix("data:image") {
+        Text(payload)
+          .font(.caption2.monospaced())
+          .lineLimit(2)
+          .truncationMode(.middle)
+          .textSelection(.enabled)
+      }
     }
     #else
     Text(payload)
@@ -563,6 +584,17 @@ private struct QRCodeCard: View {
   private let filter = CIFilter.qrCodeGenerator()
 
   private func qrImage(from raw: String) -> UIImage? {
+    let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else {
+      return nil
+    }
+
+    if raw.hasPrefix("data:image"),
+       let data = dataFromDataURL(raw),
+       let image = UIImage(data: data) {
+      return image
+    }
+
     let data = Data(raw.utf8)
     filter.setValue(data, forKey: "inputMessage")
     filter.correctionLevel = "M"
@@ -576,6 +608,18 @@ private struct QRCodeCard: View {
       return nil
     }
     return UIImage(cgImage: cgImage)
+  }
+
+  private func dataFromDataURL(_ value: String) -> Data? {
+    guard let commaIndex = value.firstIndex(of: ",") else {
+      return nil
+    }
+    let metadata = value[..<commaIndex]
+    let payload = value[value.index(after: commaIndex)...]
+    guard metadata.contains("base64") else {
+      return Data(payload.utf8)
+    }
+    return Data(base64Encoded: String(payload))
   }
   #endif
 }

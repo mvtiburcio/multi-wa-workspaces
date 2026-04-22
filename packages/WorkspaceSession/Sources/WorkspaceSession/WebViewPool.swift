@@ -45,6 +45,7 @@ public final class WebViewPool {
     let config = WKWebViewConfiguration()
     config.websiteDataStore = WebsiteDataStoreManager.dataStore(for: workspace.dataStoreID)
     config.defaultWebpagePreferences.allowsContentJavaScript = true
+    installDesktopNavigatorSpoof(on: config)
 
     let webView = WKWebView(frame: .zero, configuration: config)
     webView.customUserAgent = UserAgentProfile.whatsAppDesktopSafari
@@ -105,5 +106,50 @@ public final class WebViewPool {
       }
       release(workspaceID: candidate.workspaceID)
     }
+  }
+
+  private func installDesktopNavigatorSpoof(on configuration: WKWebViewConfiguration) {
+    let script = """
+      (() => {
+        const define = (object, key, value) => {
+          try {
+            Object.defineProperty(object, key, {
+              get: () => value,
+              configurable: true
+            });
+          } catch (_) {}
+        };
+
+        define(Navigator.prototype, 'platform', 'MacIntel');
+        define(Navigator.prototype, 'vendor', 'Apple Computer, Inc.');
+        define(Navigator.prototype, 'userAgent', '\(UserAgentProfile.whatsAppDesktopSafari)');
+        define(Navigator.prototype, 'appVersion', '\(UserAgentProfile.whatsAppDesktopSafari)');
+        define(Navigator.prototype, 'maxTouchPoints', 0);
+
+        const originalMatchMedia = window.matchMedia;
+        window.matchMedia = (query) => {
+          if (query && query.includes('pointer: coarse')) {
+            return {
+              matches: false,
+              media: query,
+              onchange: null,
+              addListener() {},
+              removeListener() {},
+              addEventListener() {},
+              removeEventListener() {},
+              dispatchEvent() { return false; }
+            };
+          }
+          return originalMatchMedia(query);
+        };
+      })();
+    """
+
+    let userScript = WKUserScript(
+      source: script,
+      injectionTime: .atDocumentStart,
+      forMainFrameOnly: false
+    )
+    configuration.userContentController.addUserScript(userScript)
   }
 }

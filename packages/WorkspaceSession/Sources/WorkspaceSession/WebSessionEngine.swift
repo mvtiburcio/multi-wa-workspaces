@@ -225,13 +225,21 @@ extension WebSessionEngine: WKNavigationDelegate {
           .toLowerCase();
         const targets = [
           'continuar para o whatsapp web',
-          'continue to whatsapp web'
+          'continue to whatsapp web',
+          'use whatsapp web here',
+          'usar whatsapp web',
+          'abrir no whatsapp web'
         ];
         const canClick = (text) => targets.some((target) => normalize(text).includes(target));
         const candidates = Array.from(document.querySelectorAll('a,button,[role="button"]'));
         for (const element of candidates) {
           const text = element.textContent || '';
           if (canClick(text)) {
+            element.click();
+            return true;
+          }
+          const href = element.getAttribute('href') || '';
+          if (href.includes('web.whatsapp.com')) {
             element.click();
             return true;
           }

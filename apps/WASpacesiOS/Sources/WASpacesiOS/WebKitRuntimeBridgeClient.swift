@@ -130,7 +130,12 @@ public final class WebKitRuntimeBridgeClient: SessionBridgeClient, UpdatesProvid
   }
 
   public func fetchQRCode(for workspaceID: UUID) async throws -> BridgeEnvelope<WorkspaceQRState> {
-    let extraction = try await extractWorkspaceData(workspaceID: workspaceID)
+    var extraction = try await extractWorkspaceData(workspaceID: workspaceID)
+    if shouldAttemptQRRecovery(extraction.qrState) {
+      try await manager.reloadSelectedWorkspace()
+      try? await Task.sleep(nanoseconds: 1_000_000_000)
+      extraction = try await extractWorkspaceData(workspaceID: workspaceID)
+    }
     return BridgeEnvelope(
       eventID: "qr-\(workspaceID.uuidString)",
       emittedAt: Date(),
@@ -314,6 +319,13 @@ public final class WebKitRuntimeBridgeClient: SessionBridgeClient, UpdatesProvid
     }
   }
 
+  private func shouldAttemptQRRecovery(_ state: WorkspaceQRState) -> Bool {
+    if state.state == .linked {
+      return false
+    }
+    return state.qrPayload.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+  }
+
   private static let observerScript = #"""
     (() => {
       try {
@@ -344,6 +356,10 @@ public final class WebKitRuntimeBridgeClient: SessionBridgeClient, UpdatesProvid
       (() => {
         const now = Date.now();
         const defaultConversationPrefix = 'conv-\#(workspaceID.uuidString)-';
+        const normalize = (value) => (value || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase();
 
         const normalizeText = (value) => {
           if (!value) return '';
@@ -357,6 +373,27 @@ public final class WebKitRuntimeBridgeClient: SessionBridgeClient, UpdatesProvid
         const safeQueryAll = (root, selector) => {
           try { return Array.from(root.querySelectorAll(selector)); } catch (_) { return []; }
         };
+
+        const bypassTargets = [
+          'continuar para o whatsapp web',
+          'continue to whatsapp web',
+          'use whatsapp web here',
+          'usar whatsapp web',
+          'abrir no whatsapp web'
+        ];
+        const bypassCandidates = safeQueryAll(document, 'a,button,[role="button"]');
+        for (const element of bypassCandidates) {
+          const text = normalize(element.textContent || '');
+          if (bypassTargets.some((target) => text.includes(target))) {
+            element.click();
+            break;
+          }
+          const href = element.getAttribute('href') || '';
+          if (href.includes('web.whatsapp.com')) {
+            element.click();
+            break;
+          }
+        }
 
         const conversationRows = safeQueryAll(document, '#pane-side [role="listitem"]');
         const conversations = conversationRows.map((row, index) => {
@@ -475,11 +512,73 @@ public final class WebKitRuntimeBridgeClient: SessionBridgeClient, UpdatesProvid
           };
         });
 
-        const qrNode = safeQuery(document, '[data-testid="qrcode"]') || safeQuery(document, 'canvas[aria-label*="Scan"]') || safeQuery(document, 'canvas[aria-label*="Escaneie"]');
-        const qrPayload = qrNode?.getAttribute('data-ref') || qrNode?.parentElement?.getAttribute('data-ref') || null;
+        const qrNode = safeQuery(document, '[data-testid="qrcode"]')
+          || safeQuery(document, 'canvas[aria-label*="Scan"]')
+          || safeQuery(document, 'canvas[aria-label*="Escaneie"]')
+          || safeQuery(document, 'canvas')
+          || safeQuery(document, 'img[alt*="QR"]');
+
+        const resolveDataRef = (node) => {
+          if (!node) return null;
+          const own = node.getAttribute('data-ref');
+          if (own) return own;
+          const parentWithRef = node.closest('[data-ref]');
+          if (parentWithRef) return parentWithRef.getAttribute('data-ref');
+          return null;
+        };
+
+        const resolveQRCodeImage = (node) => {
+          if (!node) return null;
+          try {
+            if (node.tagName === 'CANVAS' && typeof node.toDataURL === 'function') {
+              return node.toDataURL('image/png');
+            }
+            if (node.tagName === 'IMG') {
+              return node.getAttribute('src');
+            }
+            const nestedCanvas = node.querySelector('canvas');
+            if (nestedCanvas && typeof nestedCanvas.toDataURL === 'function') {
+              return nestedCanvas.toDataURL('image/png');
+            }
+            const nestedImage = node.querySelector('img');
+            if (nestedImage) {
+              return nestedImage.getAttribute('src');
+            }
+          } catch (_) {
+            return null;
+          }
+
+          try {
+            const canvases = safeQueryAll(document, 'canvas')
+              .filter((canvas) => {
+                const width = canvas.width || 0;
+                const height = canvas.height || 0;
+                const nearSquare = Math.abs(width - height) <= 8;
+                return nearSquare && width >= 120 && height >= 120;
+              })
+              .sort((a, b) => (b.width * b.height) - (a.width * a.height));
+            if (canvases.length > 0 && typeof canvases[0].toDataURL === 'function') {
+              return canvases[0].toDataURL('image/png');
+            }
+          } catch (_) {
+            return null;
+          }
+          return null;
+        };
+
+        const fallbackDataRef = (() => {
+          const refs = safeQueryAll(document, '[data-ref]')
+            .map((node) => node.getAttribute('data-ref'))
+            .filter((value) => !!value);
+          return refs.find((value) => value.includes(',') && value.length > 60) || refs[0] || null;
+        })();
+
+        const qrDataRef = resolveDataRef(qrNode) || fallbackDataRef;
+        const qrImageDataURL = resolveQRCodeImage(qrNode);
+        const qrPayload = qrImageDataURL || qrDataRef || null;
 
         let connectionState = 'connected';
-        if (qrNode) {
+        if (qrNode || qrDataRef) {
           connectionState = 'qrRequired';
         } else if (document.readyState === 'loading') {
           connectionState = 'connecting';
@@ -672,10 +771,11 @@ private struct WebKitExtractionPayload: Decodable {
       )
     }
 
+    let qrPayloadValue = qrPayload ?? ""
     let qrState = WorkspaceQRState(
       workspaceID: workspace.id,
-      state: qrConnectionState(connectivity: connectivity, expired: qrExpired),
-      qrPayload: qrPayload ?? "QR_NOT_AVAILABLE",
+      state: qrConnectionState(connectivity: connectivity, expired: qrExpired, hasPayload: !qrPayloadValue.isEmpty),
+      qrPayload: qrPayloadValue,
       expiresAt: now.addingTimeInterval(60)
     )
 
@@ -706,8 +806,11 @@ private struct WebKitExtractionPayload: Decodable {
     }
   }
 
-  private func qrConnectionState(connectivity: ConnectivityState, expired: Bool) -> QRConnectionState {
+  private func qrConnectionState(connectivity: ConnectivityState, expired: Bool, hasPayload: Bool) -> QRConnectionState {
     if expired {
+      return .expired
+    }
+    if !hasPayload && connectivity != .connected {
       return .expired
     }
     switch connectivity {
