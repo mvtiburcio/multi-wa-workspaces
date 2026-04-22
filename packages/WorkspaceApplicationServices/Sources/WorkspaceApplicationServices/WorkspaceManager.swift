@@ -114,7 +114,9 @@ public final class WorkspaceManager: ObservableObject, WorkspaceManaging {
     let startedAt = ContinuousClock.now
 
     try store.setIconAssetPath(id: id, iconAssetPath: iconAssetPath)
-    try reloadFromStore()
+    updateWorkspaceInMemory(id: id) { workspace in
+      workspace.iconAssetPath = iconAssetPath
+    }
 
     log(
       event: "workspace_icon_updated",
@@ -128,7 +130,9 @@ public final class WorkspaceManager: ObservableObject, WorkspaceManaging {
     let startedAt = ContinuousClock.now
 
     try store.clearIconAssetPath(id: id)
-    try reloadFromStore()
+    updateWorkspaceInMemory(id: id) { workspace in
+      workspace.iconAssetPath = nil
+    }
 
     log(
       event: "workspace_icon_cleared",
@@ -268,14 +272,19 @@ public final class WorkspaceManager: ObservableObject, WorkspaceManaging {
       return
     }
 
-    try store.updateLastOpenedAt(id: id, date: Date())
+    let openedAt = Date()
+    try store.updateLastOpenedAt(id: id, date: openedAt)
 
     let webView = try await sessionController.webView(for: workspace)
 
     selectedWorkspaceID = id
     selectedWebView = webView
-
-    try reloadFromStore()
+    updateWorkspaceInMemory(id: id) { workspace in
+      workspace.lastOpenedAt = openedAt
+      if workspace.state == .cold {
+        workspace.state = .loading
+      }
+    }
 
     log(
       event: "workspace_selected",
@@ -298,7 +307,9 @@ public final class WorkspaceManager: ObservableObject, WorkspaceManaging {
   private func handleSessionState(workspaceID: UUID, state: WorkspaceState) async {
     do {
       try store.updateState(id: workspaceID, state: state)
-      try reloadFromStore()
+      updateWorkspaceInMemory(id: workspaceID) { workspace in
+        workspace.state = state
+      }
     } catch {
       logger.error(
         "workspace_id=\(workspaceID.uuidString, privacy: .public) event=state_sync duration_ms=0 result=\(String(describing: error), privacy: .public)"
@@ -336,6 +347,15 @@ public final class WorkspaceManager: ObservableObject, WorkspaceManaging {
 
   private func reloadFromStore() throws {
     workspaces = try store.listWorkspaces()
+  }
+
+  private func updateWorkspaceInMemory(id: UUID, mutate: (inout Workspace) -> Void) {
+    guard let index = workspaces.firstIndex(where: { $0.id == id }) else {
+      return
+    }
+    var workspace = workspaces[index]
+    mutate(&workspace)
+    workspaces[index] = workspace
   }
 
   private func log(

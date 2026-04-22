@@ -134,6 +134,13 @@ struct MultiWAWorkspacesAppTests {
   }
 
   @Test
+  func unreadBadgeFormatterUsesExpectedLabels() {
+    #expect(WorkspaceUnreadBadgeFormatter.text(for: 1) == "1")
+    #expect(WorkspaceUnreadBadgeFormatter.text(for: 99) == "99")
+    #expect(WorkspaceUnreadBadgeFormatter.text(for: 100) == "99+")
+  }
+
+  @Test
   func smoke() {
     #expect(Bool(true))
   }

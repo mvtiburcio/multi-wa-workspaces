@@ -3,14 +3,17 @@ import Testing
 import WebKit
 @testable import WorkspaceApplicationServices
 import WorkspaceDomain
+import WorkspaceSession
 
 @MainActor
 final class InMemoryWorkspaceStore: WorkspaceStoring {
   private(set) var storage: [UUID: Workspace] = [:]
   private(set) var displayOrder: [UUID] = []
   private(set) var reorderCalls: [[UUID]] = []
+  private(set) var listCallCount = 0
 
   func listWorkspaces() throws -> [Workspace] {
+    listCallCount += 1
     if displayOrder.isEmpty {
       return storage.values.sorted { $0.createdAt < $1.createdAt }
     }
@@ -81,6 +84,10 @@ final class InMemoryWorkspaceStore: WorkspaceStoring {
     storage.removeValue(forKey: id)
     displayOrder.removeAll { $0 == id }
   }
+
+  func resetListCallCount() {
+    listCallCount = 0
+  }
 }
 
 @MainActor
@@ -102,6 +109,29 @@ final class FakeSessionController: WebSessionControlling {
   func destroySession(for workspaceID: UUID) async throws {
     destroyedWorkspaceIDs.append(workspaceID)
     webViewsByWorkspaceID.removeValue(forKey: workspaceID)
+  }
+}
+
+@MainActor
+final class FakeReportingSessionController: WebSessionControlling, WebSessionStateReporting {
+  var onStateChange: (@MainActor (UUID, WorkspaceState) -> Void)?
+  private(set) var webViewsByWorkspaceID: [UUID: WKWebView] = [:]
+
+  func webView(for workspace: Workspace) async throws -> WKWebView {
+    if let existing = webViewsByWorkspaceID[workspace.id] {
+      return existing
+    }
+    let webView = WKWebView(frame: .zero)
+    webViewsByWorkspaceID[workspace.id] = webView
+    return webView
+  }
+
+  func destroySession(for workspaceID: UUID) async throws {
+    webViewsByWorkspaceID.removeValue(forKey: workspaceID)
+  }
+
+  func emitState(workspaceID: UUID, state: WorkspaceState) {
+    onStateChange?(workspaceID, state)
   }
 }
 
@@ -340,5 +370,27 @@ struct WorkspaceManagerTests {
 
     #expect(sessions.destroyedWorkspaceIDs.contains(workspace.id))
     #expect(sessions.selectedWorkspaceIDs == [workspace.id, workspace.id])
+  }
+
+  @Test
+  func sessionStateSyncDoesNotReloadEntireWorkspaceList() async throws {
+    let store = InMemoryWorkspaceStore()
+    let sessions = FakeReportingSessionController()
+    let manager = WorkspaceManager(
+      store: store,
+      sessionController: sessions,
+      dataStoreRemover: { _ in }
+    )
+
+    let workspace = try await manager.create(name: "A")
+    try await manager.select(id: workspace.id)
+
+    store.resetListCallCount()
+    sessions.emitState(workspaceID: workspace.id, state: .connected)
+    await Task.yield()
+    await Task.yield()
+
+    #expect(store.listCallCount == 0)
+    #expect(manager.workspaces.first(where: { $0.id == workspace.id })?.state == .connected)
   }
 }

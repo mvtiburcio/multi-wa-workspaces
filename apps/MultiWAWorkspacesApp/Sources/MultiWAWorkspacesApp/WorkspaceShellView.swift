@@ -17,6 +17,29 @@ private struct WorkspaceIconCropSession: Identifiable {
   let sourceImage: NSImage
 }
 
+private struct WorkspaceUnreadBadge: View {
+  let unread: Int
+
+  var body: some View {
+    Text(WorkspaceUnreadBadgeFormatter.text(for: unread))
+      .font(.system(size: 11, weight: .semibold, design: .rounded))
+      .foregroundStyle(.white)
+      .padding(.horizontal, 7)
+      .padding(.vertical, 3)
+      .frame(minWidth: 22)
+      .background(
+        Capsule()
+          .fill(Color.red.gradient)
+      )
+      .overlay(
+        Capsule()
+          .stroke(Color.white.opacity(0.35), lineWidth: 0.6)
+      )
+      .shadow(color: .black.opacity(0.28), radius: 3, x: 0, y: 1)
+      .fixedSize()
+  }
+}
+
 private struct AppKitTextField: NSViewRepresentable {
   final class Coordinator: NSObject, NSTextFieldDelegate {
     var parent: AppKitTextField
@@ -147,19 +170,17 @@ struct WorkspaceShellView: View {
   @State private var editingSelection: Set<UUID> = []
   @State private var flyoutState = WorkspaceFlyoutState()
   @State private var alertMessage: String?
-  @State private var isRailHovered = false
-  @State private var isHotZoneHovered = false
+  @State private var isMenuHoverTargetHovered = false
   @State private var isFlyoutHovered = false
   @State private var isFlyoutVisible = false
   @State private var closeFlyoutTask: Task<Void, Never>?
   @State private var isProcessingPendingCleanup = false
 
-  private let railWidth: CGFloat = 72
-  private let railHotZoneWidth: CGFloat = 22
-  private let flyoutWidth: CGFloat = 350
-  private let flyoutCloseDelay: Duration = .milliseconds(180)
+  private let railWidth: CGFloat = 82
+  private let flyoutWidth: CGFloat = 372
+  private let flyoutCloseDelay: Duration = .milliseconds(190)
   private let railAvatarSize: CGFloat = 40
-  private let rowAvatarSize: CGFloat = 30
+  private let rowAvatarSize: CGFloat = 32
 
   init(
     manager: WorkspaceManager,
@@ -260,18 +281,6 @@ struct WorkspaceShellView: View {
     } message: {
       Text(alertMessage ?? "")
     }
-    .onChange(of: selectedWorkspaceID) { _, newValue in
-      guard let newValue, !flyoutState.canReorder else {
-        return
-      }
-      Task {
-        do {
-          try await manager.select(id: newValue)
-        } catch {
-          alertMessage = error.localizedDescription
-        }
-      }
-    }
     .onReceive(manager.$selectedWorkspaceID) { selected in
       if selectedWorkspaceID != selected {
         selectedWorkspaceID = selected
@@ -303,25 +312,26 @@ struct WorkspaceShellView: View {
 
   private var railPane: some View {
     VStack(spacing: 0) {
-      VStack(spacing: 10) {
-        if let selectedWorkspace {
-          railWorkspacePreview(for: selectedWorkspace)
-        } else {
-          Button {
-            openFlyout()
-          } label: {
-            Image(systemName: "rectangle.stack.badge.person.crop")
-              .font(.title2)
-              .frame(width: 48, height: 48)
-              .background(.thinMaterial, in: Circle())
+      ScrollView(.vertical, showsIndicators: false) {
+        LazyVStack(spacing: 10) {
+          ForEach(manager.workspaces) { workspace in
+            railWorkspaceButton(for: workspace)
           }
-          .buttonStyle(.plain)
-          .help("Abrir workspaces")
-        }
-      }
-      .padding(.top, 12)
 
-      Spacer(minLength: 0)
+          if manager.workspaces.isEmpty {
+            Image(systemName: "rectangle.stack.badge.person.crop")
+              .font(.title3)
+              .foregroundStyle(.secondary)
+              .frame(width: 52, height: 52)
+              .background(.thinMaterial, in: Circle())
+              .padding(.top, 4)
+          }
+        }
+        .padding(.top, 12)
+        .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity, alignment: .top)
+      }
+      .frame(maxHeight: .infinity, alignment: .top)
 
       Divider()
 
@@ -330,29 +340,20 @@ struct WorkspaceShellView: View {
     }
     .frame(width: railWidth)
     .frame(maxHeight: .infinity)
-    .background(.ultraThinMaterial)
-    .onHover { hovering in
-      isRailHovered = hovering
-      if hovering {
-        openFlyout()
-      } else {
-        scheduleFlyoutCloseIfNeeded()
+    .background(
+      ZStack {
+        Rectangle().fill(.ultraThinMaterial)
+        LinearGradient(
+          colors: [.white.opacity(0.10), .clear, .black.opacity(0.08)],
+          startPoint: .top,
+          endPoint: .bottom
+        )
       }
-    }
-    .overlay(alignment: .trailing) {
-      Color.clear
-        .frame(width: railHotZoneWidth)
-        .offset(x: railHotZoneWidth / 2)
-        .contentShape(Rectangle())
-        .onHover { hovering in
-          isHotZoneHovered = hovering
-          if hovering {
-            openFlyout()
-          } else {
-            scheduleFlyoutCloseIfNeeded()
-          }
-        }
-    }
+    )
+    .overlay(
+      Rectangle()
+        .stroke(.white.opacity(0.08), lineWidth: 1)
+    )
   }
 
   private var flyoutPane: some View {
@@ -369,12 +370,21 @@ struct WorkspaceShellView: View {
         browsingWorkspaceList
       }
     }
-    .background(.ultraThinMaterial)
+    .background(
+      ZStack {
+        Rectangle().fill(.ultraThinMaterial)
+        LinearGradient(
+          colors: [.white.opacity(0.14), .white.opacity(0.02), .black.opacity(0.10)],
+          startPoint: .topLeading,
+          endPoint: .bottomTrailing
+        )
+      }
+    )
     .overlay(
       RoundedRectangle(cornerRadius: 0)
-        .stroke(.separator.opacity(0.35), lineWidth: 1)
+        .stroke(.white.opacity(0.14), lineWidth: 1)
     )
-    .shadow(color: .black.opacity(0.16), radius: 14, x: 6, y: 0)
+    .shadow(color: .black.opacity(0.24), radius: 18, x: 8, y: 0)
     .onHover { hovering in
       isFlyoutHovered = hovering
       if hovering {
@@ -387,10 +397,10 @@ struct WorkspaceShellView: View {
 
   private var flyoutHeader: some View {
     VStack(spacing: 8) {
-      HStack(alignment: .top) {
+      HStack(alignment: .top, spacing: 10) {
         VStack(alignment: .leading, spacing: 2) {
           Text("Workspaces")
-            .font(.headline)
+            .font(.system(size: 22, weight: .bold, design: .rounded))
 
           if flyoutState.canReorder {
             Text("\(editingSelection.count) selecionados")
@@ -410,13 +420,23 @@ struct WorkspaceShellView: View {
         Spacer()
 
         HStack(spacing: 8) {
-          Button {
-            toggleEditMode()
-          } label: {
-            Label(flyoutState.canReorder ? "Concluir" : "Editar", systemImage: flyoutState.canReorder ? "checkmark.circle.fill" : "square.and.pencil")
-              .labelStyle(.titleAndIcon)
+          if flyoutState.canReorder {
+            Button {
+              toggleEditMode()
+            } label: {
+              Label("Concluir", systemImage: "checkmark.circle.fill")
+                .labelStyle(.titleAndIcon)
+            }
+            .buttonStyle(.borderedProminent)
+          } else {
+            Button {
+              toggleEditMode()
+            } label: {
+              Label("Editar", systemImage: "square.and.pencil")
+                .labelStyle(.titleAndIcon)
+            }
+            .buttonStyle(.bordered)
           }
-          .buttonStyle(.bordered)
 
           if flyoutState.panel == .config {
             Button {
@@ -438,11 +458,11 @@ struct WorkspaceShellView: View {
         }
       }
     }
-    .padding(.horizontal, 12)
-    .padding(.vertical, 10)
+    .padding(.horizontal, 14)
+    .padding(.vertical, 12)
     .background(
       LinearGradient(
-        colors: [.white.opacity(0.10), .clear],
+        colors: [.white.opacity(0.16), .clear],
         startPoint: .top,
         endPoint: .bottom
       )
@@ -452,11 +472,16 @@ struct WorkspaceShellView: View {
   private var browsingWorkspaceList: some View {
     List(manager.workspaces) { workspace in
       Button {
-        selectedWorkspaceID = workspace.id
+        Task {
+          await selectWorkspace(id: workspace.id, collapseFlyout: true)
+        }
       } label: {
         workspaceListRow(for: workspace, showSelectionControl: false)
       }
       .buttonStyle(.plain)
+      .listRowInsets(EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10))
+      .listRowSeparator(.hidden)
+      .listRowBackground(Color.clear)
       .contextMenu {
         Button("Renomear") {
           openRenameSheet(for: workspace)
@@ -480,6 +505,7 @@ struct WorkspaceShellView: View {
         }
       }
     }
+    .scrollContentBackground(.hidden)
     .listStyle(.plain)
   }
 
@@ -487,9 +513,13 @@ struct WorkspaceShellView: View {
     List {
       ForEach(manager.workspaces) { workspace in
         workspaceListRow(for: workspace, showSelectionControl: true)
+          .listRowInsets(EdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10))
+          .listRowSeparator(.hidden)
+          .listRowBackground(Color.clear)
       }
       .onMove(perform: moveWorkspaces)
     }
+    .scrollContentBackground(.hidden)
     .listStyle(.plain)
   }
 
@@ -628,7 +658,7 @@ struct WorkspaceShellView: View {
   }
 
   private var railFooterActions: some View {
-    VStack(spacing: 12) {
+    HStack(spacing: 12) {
       Button {
         Task {
           await createWorkspaceQuickly()
@@ -639,32 +669,54 @@ struct WorkspaceShellView: View {
       }
       .buttonStyle(.plain)
       .help("Adicionar workspace")
+
+      Button {
+        openFlyout()
+      } label: {
+        Image(systemName: isFlyoutVisible ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.circle.fill")
+          .font(.title2)
+      }
+      .buttonStyle(.plain)
+      .help("Menu de workspaces")
+      .onHover { hovering in
+        isMenuHoverTargetHovered = hovering
+        if hovering {
+          openFlyout()
+        } else {
+          scheduleFlyoutCloseIfNeeded()
+        }
+      }
     }
+    .frame(maxWidth: .infinity)
     .foregroundStyle(.primary)
   }
 
-  private func railWorkspacePreview(for workspace: Workspace) -> some View {
+  private func railWorkspaceButton(for workspace: Workspace) -> some View {
     let unread = manager.unreadByWorkspace[workspace.id] ?? 0
-    let iconURL = iconAssetStore.url(for: workspace.iconAssetPath)
+    let isActive = selectedWorkspaceID == workspace.id
 
     return Button {
-      selectedWorkspaceID = workspace.id
-      openFlyout()
+      Task {
+        await selectWorkspace(id: workspace.id, collapseFlyout: false)
+      }
     } label: {
-      workspaceAvatar(for: workspace, iconURL: iconURL, size: railAvatarSize)
-        .frame(width: railAvatarSize + 20, height: railAvatarSize + 20)
-        .overlay(alignment: .topTrailing) {
-          if shouldDisplayUnread(unread) {
-            unreadBadge(unread)
-              .offset(x: 8, y: -8)
+      ZStack(alignment: .topTrailing) {
+        workspaceAvatar(for: workspace, size: railAvatarSize)
+          .frame(width: railAvatarSize, height: railAvatarSize)
+          .overlay {
+            Circle()
+              .stroke(isActive ? Color.accentColor : Color.white.opacity(0.22), lineWidth: isActive ? 2 : 1)
           }
+          .shadow(color: .black.opacity(isActive ? 0.35 : 0.2), radius: isActive ? 5 : 3, x: 0, y: 2)
+
+        if shouldDisplayUnread(unread) {
+          WorkspaceUnreadBadge(unread: unread)
+            .padding(.top, -2)
+            .padding(.trailing, -4)
         }
-        .overlay(
-          Circle()
-            .stroke(Color.accentColor, lineWidth: 2)
-            .padding(10)
-        )
-        .contentShape(Rectangle())
+      }
+      .frame(width: railAvatarSize + 20, height: railAvatarSize + 20)
+      .contentShape(RoundedRectangle(cornerRadius: 12))
     }
     .buttonStyle(.plain)
     .help(workspace.name)
@@ -672,7 +724,6 @@ struct WorkspaceShellView: View {
 
   private func workspaceListRow(for workspace: Workspace, showSelectionControl: Bool) -> some View {
     let unread = manager.unreadByWorkspace[workspace.id] ?? 0
-    let iconURL = iconAssetStore.url(for: workspace.iconAssetPath)
     let isSelectedForDelete = editingSelection.contains(workspace.id)
     let isActive = selectedWorkspaceID == workspace.id
 
@@ -688,20 +739,22 @@ struct WorkspaceShellView: View {
         .buttonStyle(.plain)
       }
 
-      workspaceAvatar(for: workspace, iconURL: iconURL, size: rowAvatarSize)
+      workspaceAvatar(for: workspace, size: rowAvatarSize)
 
       VStack(alignment: .leading, spacing: 2) {
         Text(workspace.name)
           .font(.headline)
+          .lineLimit(1)
         Text(stateLabel(for: workspace.state))
           .font(.caption)
           .foregroundStyle(.secondary)
+          .lineLimit(1)
       }
 
-      Spacer()
+      Spacer(minLength: 8)
 
       if shouldDisplayUnread(unread) {
-        unreadBadge(unread)
+        WorkspaceUnreadBadge(unread: unread)
       }
 
       if showSelectionControl {
@@ -711,40 +764,24 @@ struct WorkspaceShellView: View {
     }
     .padding(8)
     .background(
-      RoundedRectangle(cornerRadius: 10)
-        .fill(isActive && !showSelectionControl ? Color.accentColor.opacity(0.14) : Color.white.opacity(0.06))
+      RoundedRectangle(cornerRadius: 12)
+        .fill(isActive && !showSelectionControl ? Color.accentColor.opacity(0.17) : Color.white.opacity(0.07))
     )
     .overlay(
-      RoundedRectangle(cornerRadius: 10)
-        .stroke(isActive && !showSelectionControl ? Color.accentColor.opacity(0.6) : .clear, lineWidth: 1)
+      RoundedRectangle(cornerRadius: 12)
+        .stroke(isActive && !showSelectionControl ? Color.accentColor.opacity(0.62) : Color.white.opacity(0.08), lineWidth: 1)
     )
     .contentShape(Rectangle())
     .onTapGesture {
       if showSelectionControl {
         toggleEditingSelection(for: workspace.id)
-      } else {
-        selectedWorkspaceID = workspace.id
       }
     }
   }
 
-  private func unreadBadge(_ unread: Int) -> some View {
-    Text(unread > 99 ? "99+" : "\(unread)")
-      .font(.caption2.weight(.bold))
-      .padding(.horizontal, 7)
-      .padding(.vertical, 3)
-      .background(Capsule().fill(.red))
-      .foregroundStyle(.white)
-      .fixedSize()
-  }
-
-  private func shouldDisplayUnread(_ unread: Int) -> Bool {
-    uiSettingsStore.settings.showBadges && unread > 0
-  }
-
   @ViewBuilder
-  private func workspaceAvatar(for workspace: Workspace, iconURL: URL?, size: CGFloat) -> some View {
-    if let iconURL, let image = NSImage(contentsOf: iconURL) {
+  private func workspaceAvatar(for workspace: Workspace, size: CGFloat) -> some View {
+    if let image = iconAssetStore.image(for: workspace.iconAssetPath) {
       Image(nsImage: image)
         .resizable()
         .scaledToFill()
@@ -786,16 +823,12 @@ struct WorkspaceShellView: View {
   private func openCreateSheet() {
     createWorkspaceName = ""
     activeSheet = .create
-    flyoutState.panel = .workspaces
-    openFlyout()
   }
 
   private func openRenameSheet(for workspace: Workspace) {
     workspaceToRename = workspace
     renameWorkspaceName = workspace.name
     activeSheet = .rename
-    flyoutState.panel = .workspaces
-    openFlyout()
   }
 
   private func closeSheet() {
@@ -829,9 +862,7 @@ struct WorkspaceShellView: View {
   private func createWorkspaceQuickly() async {
     do {
       let workspace = try await manager.create(name: generateWorkspaceName())
-      selectedWorkspaceID = workspace.id
-      try await manager.select(id: workspace.id)
-      openFlyout()
+      await selectWorkspace(id: workspace.id, collapseFlyout: false)
     } catch {
       alertMessage = error.localizedDescription
     }
@@ -841,9 +872,7 @@ struct WorkspaceShellView: View {
     do {
       let workspace = try await manager.create(name: createWorkspaceName)
       closeSheet()
-      selectedWorkspaceID = workspace.id
-      try await manager.select(id: workspace.id)
-      openFlyout()
+      await selectWorkspace(id: workspace.id, collapseFlyout: false)
     } catch {
       alertMessage = error.localizedDescription
     }
@@ -899,7 +928,7 @@ struct WorkspaceShellView: View {
       }
 
       if let selectedWorkspaceID {
-        try await manager.select(id: selectedWorkspaceID)
+        await selectWorkspace(id: selectedWorkspaceID, collapseFlyout: false)
       }
     } catch {
       alertMessage = error.localizedDescription
@@ -995,10 +1024,31 @@ struct WorkspaceShellView: View {
     }
   }
 
+  private func selectWorkspace(id: UUID, collapseFlyout: Bool) async {
+    do {
+      selectedWorkspaceID = id
+      try await manager.select(id: id)
+      if collapseFlyout && !flyoutState.canReorder && flyoutState.panel == .workspaces {
+        closeFlyoutImmediately()
+      }
+    } catch {
+      alertMessage = error.localizedDescription
+    }
+  }
+
   private func openFlyout() {
     closeFlyoutTask?.cancel()
     closeFlyoutTask = nil
     isFlyoutVisible = true
+  }
+
+  private func closeFlyoutImmediately() {
+    closeFlyoutTask?.cancel()
+    closeFlyoutTask = nil
+    isFlyoutVisible = false
+    if flyoutState.panel == .config {
+      flyoutState.panel = .workspaces
+    }
   }
 
   private func scheduleFlyoutCloseIfNeeded() {
@@ -1012,14 +1062,15 @@ struct WorkspaceShellView: View {
       guard !Task.isCancelled else {
         return
       }
-      guard !isRailHovered && !isHotZoneHovered && !isFlyoutHovered else {
+      guard !isMenuHoverTargetHovered && !isFlyoutHovered else {
         return
       }
-      isFlyoutVisible = false
-      if flyoutState.panel == .config {
-        flyoutState.panel = .workspaces
-      }
+      closeFlyoutImmediately()
     }
+  }
+
+  private func shouldDisplayUnread(_ unread: Int) -> Bool {
+    uiSettingsStore.settings.showBadges && unread > 0
   }
 
   private func color(for colorTag: String) -> Color {

@@ -24,6 +24,7 @@ public final class WebSessionEngine: NSObject, WebSessionControlling, WebSession
   private var webViewWorkspaceMap: [ObjectIdentifier: UUID] = [:]
   private var titleObservers: [ObjectIdentifier: NSKeyValueObservation] = [:]
   private var unreadByWorkspace: [UUID: Int] = [:]
+  private var lastKnownState: [UUID: WorkspaceState] = [:]
   private var loadingRecoveryTasks: [ObjectIdentifier: Task<Void, Never>] = [:]
   private var disconnectedRecoveryTasks: [ObjectIdentifier: Task<Void, Never>] = [:]
 
@@ -46,11 +47,25 @@ public final class WebSessionEngine: NSObject, WebSessionControlling, WebSession
     if webView.url == nil {
       loadRootURL(in: webView, workspaceID: workspace.id, reason: "initial_load")
     } else if webView.isLoading {
+      lastKnownState[workspace.id] = .loading
       onStateChange?(workspace.id, .loading)
       scheduleLoadingRecovery(for: webView, workspaceID: workspace.id)
     } else {
-      let state = await detectState(for: webView, workspaceID: workspace.id)
-      onStateChange?(workspace.id, state)
+      let cachedState = lastKnownState[workspace.id] ?? .connected
+      onStateChange?(workspace.id, cachedState)
+      Task { @MainActor [weak self, weak webView] in
+        guard
+          let self,
+          let webView,
+          self.webViewWorkspaceMap[ObjectIdentifier(webView)] == workspace.id
+        else {
+          return
+        }
+        let state = await self.detectState(for: webView, workspaceID: workspace.id)
+        self.lastKnownState[workspace.id] = state
+        self.onStateChange?(workspace.id, state)
+        self.refreshUnreadCount(for: webView, workspaceID: workspace.id)
+      }
     }
 
     let webViewPointer = pointerString(for: webView)
@@ -84,6 +99,7 @@ public final class WebSessionEngine: NSObject, WebSessionControlling, WebSession
 
     pool.release(workspaceID: workspaceID)
     unreadByWorkspace.removeValue(forKey: workspaceID)
+    lastKnownState.removeValue(forKey: workspaceID)
     onStateChange?(workspaceID, .cold)
 
     log(
@@ -114,6 +130,7 @@ extension WebSessionEngine: WKNavigationDelegate {
     guard let workspaceID = webViewWorkspaceMap[ObjectIdentifier(webView)] else {
       return
     }
+    lastKnownState[workspaceID] = .loading
     onStateChange?(workspaceID, .loading)
   }
 
@@ -124,6 +141,7 @@ extension WebSessionEngine: WKNavigationDelegate {
 
     Task { @MainActor in
       let state = await detectState(for: webView, workspaceID: workspaceID)
+      lastKnownState[workspaceID] = state
       onStateChange?(workspaceID, state)
       refreshUnreadCount(for: webView, workspaceID: workspaceID)
       logger.info(
@@ -149,6 +167,7 @@ extension WebSessionEngine: WKNavigationDelegate {
     }
 
     if isTransientNetworkError(error) {
+      lastKnownState[workspaceID] = .disconnected
       onStateChange?(workspaceID, .disconnected)
       logger.warning(
         "workspace_id=\(workspaceID.uuidString, privacy: .public) event=navigation_disconnected duration_ms=0 result=\(String(describing: error), privacy: .public)"
@@ -157,6 +176,7 @@ extension WebSessionEngine: WKNavigationDelegate {
       return
     }
 
+    lastKnownState[workspaceID] = .failed
     onStateChange?(workspaceID, .failed)
     logger.error(
       "workspace_id=\(workspaceID.uuidString, privacy: .public) event=navigation_failed duration_ms=0 result=\(String(describing: error), privacy: .public)"
@@ -179,6 +199,7 @@ extension WebSessionEngine: WKNavigationDelegate {
     logger.error(
       "workspace_id=\(workspaceID.uuidString, privacy: .public) event=webcontent_terminated duration_ms=0 result=reloading"
     )
+    lastKnownState[workspaceID] = .loading
     loadRootURL(in: webView, workspaceID: workspaceID, reason: "webcontent_terminated")
   }
 
@@ -274,6 +295,7 @@ extension WebSessionEngine: WKNavigationDelegate {
       timeoutInterval: 30
     )
     webView.load(request)
+    lastKnownState[workspaceID] = .loading
     onStateChange?(workspaceID, .loading)
     scheduleLoadingRecovery(for: webView, workspaceID: workspaceID)
     logger.info(
@@ -313,6 +335,7 @@ extension WebSessionEngine: WKNavigationDelegate {
       }
 
       let state = await self.detectState(for: webView, workspaceID: workspaceID)
+      self.lastKnownState[workspaceID] = state
       self.onStateChange?(workspaceID, state)
       self.refreshUnreadCount(for: webView, workspaceID: workspaceID)
     }

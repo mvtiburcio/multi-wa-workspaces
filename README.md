@@ -10,10 +10,10 @@ Entregue nesta versão:
 - isolamento de sessão por `WKWebsiteDataStore` com `UUID` dedicado;
 - persistência local de metadados com SwiftData;
 - pool de `WKWebView` mantendo sessões ativas em paralelo;
-- shell nativo macOS com rail de workspaces e flyout por hover;
+- shell nativo macOS com rail recolhido (todos os workspaces) e flyout por hover no menu;
 - ações `Editar` e `Config` no cabeçalho do flyout (sem abas), com reordenação e exclusão em lote;
 - foto opcional por workspace com recorte manual (zoom + arraste) e persistência local no App Support;
-- badges de mensagens não lidas no rail e no flyout;
+- badges de mensagens não lidas no rail e no flyout sem clipping visual;
 - configurações funcionais locais (badges, notificações e workspace padrão, com ações de manutenção);
 - remoção resiliente de workspace quando datastore estiver temporariamente em uso (fila local de limpeza pendente);
 - testes unitários/integrados e CI com build/test macOS.

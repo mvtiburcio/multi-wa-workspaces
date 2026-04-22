@@ -28,6 +28,8 @@ Data de referência: 21 de abril de 2026.
 - [x] ícone/foto opcional por workspace com persistência local;
 - [x] recorte manual de avatar antes de salvar o ícone;
 - [x] fila local de limpeza pendente para datastores em uso;
+- [x] flyout com gatilho único no botão menu (hambúrguer);
+- [x] rail recolhido com todos os workspaces e troca rápida sem abrir flyout;
 - monitoramento técnico expandido (métricas por workspace);
 - otimização de memória para cenários com muitos workspaces;
 - testes de estabilidade de longa duração;

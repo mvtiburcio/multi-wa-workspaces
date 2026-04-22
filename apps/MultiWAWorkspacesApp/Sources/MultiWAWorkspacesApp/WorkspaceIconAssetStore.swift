@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 @MainActor
@@ -5,6 +6,7 @@ final class WorkspaceIconAssetStore {
   private let fileManager: FileManager
   private let baseDirectoryURL: URL
   private let iconsDirectoryURL: URL
+  private let imageCache = NSCache<NSString, NSImage>()
 
   init(fileManager: FileManager = .default) throws {
     self.fileManager = fileManager
@@ -32,6 +34,7 @@ final class WorkspaceIconAssetStore {
       try fileManager.removeItem(at: destinationURL)
     }
     try fileManager.copyItem(at: sourceURL, to: destinationURL)
+    imageCache.removeObject(forKey: NSString(string: "workspace-icons/\(fileName)"))
 
     return "workspace-icons/\(fileName)"
   }
@@ -44,17 +47,41 @@ final class WorkspaceIconAssetStore {
     try removeExistingIcons(for: workspaceID, preserving: fileName)
 
     try pngData.write(to: destinationURL, options: [.atomic])
+    imageCache.removeObject(forKey: NSString(string: "workspace-icons/\(fileName)"))
     return "workspace-icons/\(fileName)"
   }
 
   func removeIcon(relativePath: String) throws {
+    let key = normalizedCacheKey(from: relativePath)
     guard let targetURL = url(for: relativePath) else {
       return
     }
     guard fileManager.fileExists(atPath: targetURL.path) else {
+      if let key {
+        imageCache.removeObject(forKey: key)
+      }
       return
     }
     try fileManager.removeItem(at: targetURL)
+    if let key {
+      imageCache.removeObject(forKey: key)
+    }
+  }
+
+  func image(for relativePath: String?) -> NSImage? {
+    guard let key = normalizedCacheKey(from: relativePath) else {
+      return nil
+    }
+    if let cached = imageCache.object(forKey: key) {
+      return cached
+    }
+    let normalizedPath = key as String
+    guard let fileURL = url(for: normalizedPath), let image = NSImage(contentsOf: fileURL) else {
+      imageCache.removeObject(forKey: key)
+      return nil
+    }
+    imageCache.setObject(image, forKey: key)
+    return image
   }
 
   func url(for relativePath: String?) -> URL? {
@@ -79,12 +106,25 @@ final class WorkspaceIconAssetStore {
 
     for fileURL in existingFiles where fileURL.lastPathComponent.hasPrefix(prefix) && fileURL.lastPathComponent != fileName {
       try fileManager.removeItem(at: fileURL)
+      let relativePath = "workspace-icons/\(fileURL.lastPathComponent)"
+      imageCache.removeObject(forKey: NSString(string: relativePath))
     }
   }
 
   private func normalizedPathExtension(from sourceURL: URL) -> String {
     let ext = sourceURL.pathExtension.lowercased()
     return ext.isEmpty ? "png" : ext
+  }
+
+  private func normalizedCacheKey(from relativePath: String?) -> NSString? {
+    guard let relativePath else {
+      return nil
+    }
+    let normalized = relativePath.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !normalized.isEmpty else {
+      return nil
+    }
+    return NSString(string: normalized)
   }
 
   private static func applicationSupportDirectory(fileManager: FileManager) throws -> URL {
