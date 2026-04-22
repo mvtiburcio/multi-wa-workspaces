@@ -152,6 +152,7 @@ extension WebSessionEngine: WKNavigationDelegate {
     }
 
     Task { @MainActor in
+      await bypassMobileInterstitialIfNeeded(for: webView, workspaceID: workspaceID)
       let state = await detectState(for: webView, workspaceID: workspaceID)
       lastKnownState[workspaceID] = state
       onStateChange?(workspaceID, state)
@@ -213,6 +214,44 @@ extension WebSessionEngine: WKNavigationDelegate {
     )
     lastKnownState[workspaceID] = .loading
     loadRootURL(in: webView, workspaceID: workspaceID, reason: "webcontent_terminated")
+  }
+
+  private func bypassMobileInterstitialIfNeeded(for webView: WKWebView, workspaceID: UUID) async {
+    let script = """
+      (() => {
+        const normalize = (value) => (value || '')
+          .normalize('NFD')
+          .replace(/[\\u0300-\\u036f]/g, '')
+          .toLowerCase();
+        const targets = [
+          'continuar para o whatsapp web',
+          'continue to whatsapp web'
+        ];
+        const canClick = (text) => targets.some((target) => normalize(text).includes(target));
+        const candidates = Array.from(document.querySelectorAll('a,button,[role="button"]'));
+        for (const element of candidates) {
+          const text = element.textContent || '';
+          if (canClick(text)) {
+            element.click();
+            return true;
+          }
+        }
+        return false;
+      })();
+    """
+
+    do {
+      let result = try await webView.evaluateJavaScript(script)
+      if let clicked = result as? Bool, clicked {
+        logger.info(
+          "workspace_id=\(workspaceID.uuidString, privacy: .public) event=interstitial_bypass duration_ms=0 result=clicked"
+        )
+      }
+    } catch {
+      logger.warning(
+        "workspace_id=\(workspaceID.uuidString, privacy: .public) event=interstitial_bypass duration_ms=0 result=\(String(describing: error), privacy: .public)"
+      )
+    }
   }
 
   private func detectState(for webView: WKWebView, workspaceID: UUID) async -> WorkspaceState {

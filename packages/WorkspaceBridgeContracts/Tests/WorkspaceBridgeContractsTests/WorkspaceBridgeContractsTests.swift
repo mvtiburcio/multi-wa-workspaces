@@ -105,4 +105,13 @@ struct WorkspaceBridgeContractsTests {
     #expect(decoded == value)
     #expect(decoded.schemaVersion == 1)
   }
+
+  @Test
+  func decoderAcceptsISO8601WithoutFractionalSeconds() throws {
+    let payload = #"{"schemaVersion":1,"eventID":"evt-plain-seconds","emittedAt":"2026-04-22T12:00:00Z","payload":{"workspaceID":"11111111-1111-1111-1111-111111111111","events":[],"cursor":{"workspaceID":"11111111-1111-1111-1111-111111111111","sequence":1,"lastEventID":"evt-plain-seconds","checkpointAt":"2026-04-22T12:00:00Z"}}}"#
+    let decoded = try BridgeCodec.makeDecoder().decode(BridgeEnvelope<SyncDeltaPayload>.self, from: Data(payload.utf8))
+    let expected = ISO8601DateFormatter().date(from: "2026-04-22T12:00:00Z")
+    #expect(decoded.eventID == "evt-plain-seconds")
+    #expect(decoded.emittedAt == expected)
+  }
 }

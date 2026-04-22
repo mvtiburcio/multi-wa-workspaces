@@ -1,13 +1,14 @@
-# WASpaces
+# WASpace
 
 Projeto open source para operar múltiplos workspaces com isolamento de sessão.
-Atualmente, a base implementada está na POC macOS via WebKit. A trilha iOS nativa já está planejada com Session Bridge Cloud.
+Atualmente, a base implementada em produção interna está no runtime WebKit (macOS + iOS), mantendo Session Bridge Cloud em trilha paralela.
 
 ## Status
 
 `POC macOS v1 implementada` em 21 de abril de 2026.
 `Planejamento iOS Native UI` documentado em 22 de abril de 2026.
 `Implementação iOS + Session Bridge MVP` iniciada em 22 de abril de 2026 (internal-only).
+`Migração iOS para runtime WebKit` concluída em 22 de abril de 2026 (internal-only).
 
 Entregue nesta versão:
 
@@ -23,7 +24,10 @@ Entregue nesta versão:
 - remoção resiliente de workspace quando datastore estiver temporariamente em uso (fila local de limpeza pendente);
 - testes unitários/integrados e CI com build/test macOS;
 - Session Bridge MVP com `Swift Vapor + SQLite + Bearer Token` (`sync`, `events`, `send`, `qr`);
-- app iOS nativo gerado por `xcodegen` em `apps/WASpacesiOSApp` com modo demo visual por padrão e suporte a Bridge HTTP/SSE real por configuração.
+- app iOS nativo gerado por `xcodegen` em `apps/WASpacesiOSApp`, com runtime WebKit e isolamento real por workspace;
+- UX iOS com abas `Chats`, `Atualizações`, `Chamadas`, `Ajustes`, switcher de workspace e sessão real `web.whatsapp.com` embutida;
+- bridge com erros padronizados (`BridgeErrorEnvelope`), retry/backoff configurável no client e fila interna de notificações (`/notifications`) sem APNs real nesta etapa.
+- bridge com provider real opcional WAHA para sessão por workspace (QR/sync/send) via variáveis `WASPACES_BRIDGE_WAHA_*`.
 
 ## Requisitos
 
@@ -54,7 +58,7 @@ xcodegen generate --spec apps/WASpacesiOSApp/project.yml
 - `packages/WorkspaceSession`: engine WebKit, pool e datastore
 - `packages/WorkspaceApplicationServices`: `WorkspaceManager` e orquestração
 - `packages/WorkspaceBridgeContracts`: contratos de sync/realtime/send para Session Bridge
-- `apps/WASpacesiOS`: app iOS Sprint 1 com fluxo nativo e providers mockáveis
+- `apps/WASpacesiOS`: app iOS com fluxo nativo e runtime WebKit (mantendo providers bridge no mesmo core para trilha cloud)
 - `bridge/SessionBridgeServer`: backend bridge MVP (Vapor + SQLite + SSE + auth Bearer)
 - `apps/WASpacesiOSApp`: projeto iOS nativo (`.xcodeproj`) para simulador/dispositivo
 
@@ -68,6 +72,7 @@ xcodegen generate --spec apps/WASpacesiOSApp/project.yml
 - [Arquitetura](./docs/architecture.md)
 - [Roadmap](./docs/roadmap.md)
 - [Guia de Desenvolvimento Local](./docs/local-development.md)
+- [Deploy VPS](./docs/deployment-vps.md)
 - [Critérios de Aceite da POC](./docs/poc-acceptance.md)
 - [Riscos e Limites](./docs/risks-and-limits.md)
 - [Session Bridge: Especificação Operacional](./docs/bridge/session-bridge-operational-spec.md)
@@ -85,4 +90,4 @@ xcodegen generate --spec apps/WASpacesiOSApp/project.yml
 
 ## Aviso importante
 
-A POC atual segue o modelo QR-only em WebKit no macOS. A trilha iOS está em Sprint 1 com fluxo `internal-only` e exige gate formal de conformidade App Store para qualquer distribuição. O uso de serviços de terceiros deve respeitar os termos e políticas vigentes desses serviços.
+A trilha atual opera em `internal-only` para validação técnica de iOS + Session Bridge e exige gate formal de conformidade App Store para distribuição pública. O uso de serviços de terceiros deve respeitar os termos e políticas vigentes desses serviços.

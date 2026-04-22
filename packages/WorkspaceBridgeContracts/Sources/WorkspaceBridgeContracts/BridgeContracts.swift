@@ -42,6 +42,14 @@ public struct WorkspaceSnapshot: Identifiable, Hashable, Codable, Sendable {
   }
 }
 
+public struct CreateWorkspaceRequest: Hashable, Codable, Sendable {
+  public let name: String
+
+  public init(name: String) {
+    self.name = name
+  }
+}
+
 public enum ConversationStatus: String, Codable, CaseIterable, Sendable {
   case active
   case archived
@@ -293,6 +301,70 @@ public struct WorkspaceQRState: Hashable, Codable, Sendable {
   }
 }
 
+public enum UpdateKind: String, Hashable, Codable, Sendable {
+  case status
+  case channel
+}
+
+public struct UpdateItem: Identifiable, Hashable, Codable, Sendable {
+  public let id: String
+  public let workspaceID: UUID
+  public let title: String
+  public let subtitle: String
+  public let timestamp: Date
+  public let kind: UpdateKind
+  public let unread: Bool
+
+  public init(
+    id: String,
+    workspaceID: UUID,
+    title: String,
+    subtitle: String,
+    timestamp: Date,
+    kind: UpdateKind,
+    unread: Bool
+  ) {
+    self.id = id
+    self.workspaceID = workspaceID
+    self.title = title
+    self.subtitle = subtitle
+    self.timestamp = timestamp
+    self.kind = kind
+    self.unread = unread
+  }
+}
+
+public enum CallDirection: String, Hashable, Codable, Sendable {
+  case incoming
+  case outgoing
+  case missed
+}
+
+public struct CallItem: Identifiable, Hashable, Codable, Sendable {
+  public let id: String
+  public let workspaceID: UUID
+  public let contactName: String
+  public let occurredAt: Date
+  public let durationSeconds: Int
+  public let direction: CallDirection
+
+  public init(
+    id: String,
+    workspaceID: UUID,
+    contactName: String,
+    occurredAt: Date,
+    durationSeconds: Int,
+    direction: CallDirection
+  ) {
+    self.id = id
+    self.workspaceID = workspaceID
+    self.contactName = contactName
+    self.occurredAt = occurredAt
+    self.durationSeconds = durationSeconds
+    self.direction = direction
+  }
+}
+
 public struct BridgeEnvelope<Payload: Hashable & Codable & Sendable>: Hashable, Codable, Sendable {
   public let schemaVersion: Int
   public let eventID: String
@@ -334,5 +406,33 @@ public struct BridgeRetryPolicy: Hashable, Codable, Sendable {
     self.initialDelayMilliseconds = initialDelayMilliseconds
     self.maxDelayMilliseconds = maxDelayMilliseconds
     self.backoff = backoff
+  }
+}
+
+public struct NotificationQueueItem: Identifiable, Hashable, Codable, Sendable {
+  public let id: UUID
+  public let workspaceID: UUID
+  public let event: String
+  public let payload: String
+  public let status: String
+  public let createdAt: Date
+  public let processedAt: Date?
+
+  public init(
+    id: UUID,
+    workspaceID: UUID,
+    event: String,
+    payload: String,
+    status: String,
+    createdAt: Date,
+    processedAt: Date?
+  ) {
+    self.id = id
+    self.workspaceID = workspaceID
+    self.event = event
+    self.payload = payload
+    self.status = status
+    self.createdAt = createdAt
+    self.processedAt = processedAt
   }
 }

@@ -1,4 +1,4 @@
-# Aceite — iOS Native UI (Planejamento v1)
+# Aceite — iOS Native UI (Implementação internal-only)
 
 ## Critério de Pronto da Rodada de Planejamento
 
@@ -19,30 +19,44 @@
 
 ## Checklist Técnico
 
-- [ ] `WorkspaceSnapshot` cobre conectividade e estado operacional.
-- [ ] `ConversationSummary` cobre dados mínimos de inbox.
-- [ ] `ThreadMessage` cobre tipos e status de entrega.
-- [ ] `SyncCursor` cobre recuperação incremental.
-- [ ] `SendMessageCommand`/`SendMessageResult` cobrem idempotência e retorno.
-- [ ] `RealtimeEvent` cobre atualização de workspace/inbox/thread.
-- [ ] `FallbackRenderState` cobre política de degradação.
+- [x] `WorkspaceSnapshot` cobre conectividade e estado operacional.
+- [x] `ConversationSummary` cobre dados mínimos de inbox.
+- [x] `ThreadMessage` cobre tipos e status de entrega.
+- [x] `SyncCursor` cobre recuperação incremental.
+- [x] `SendMessageCommand`/`SendMessageResult` cobrem idempotência e retorno.
+- [x] `RealtimeEvent` cobre atualização de workspace/inbox/thread.
+- [x] `FallbackRenderState` cobre política de degradação.
 
 ## Checklist de Produto/UX
 
-- [ ] Jornada ponta a ponta documentada (QR -> inbox -> thread -> envio).
-- [ ] Regras de navegação e estado por workspace definidas.
-- [ ] Acessibilidade mínima definida (Dynamic Type, VoiceOver, contraste).
-- [ ] Feedback operacional definido para erro, retry e fallback.
+- [x] Jornada ponta a ponta documentada (QR -> inbox -> thread -> envio).
+- [x] Regras de navegação e estado por workspace definidas.
+- [x] Acessibilidade mínima definida (Dynamic Type, VoiceOver, contraste).
+- [x] Feedback operacional definido para erro, retry e fallback.
 
 ## Checklist de Risco/Operação
 
-- [ ] Riscos de App Store/compliance registrados com mitigação.
-- [ ] Riscos de mudança de frontend web com mitigação por fallback.
-- [ ] Riscos de custo operacional de workers com estratégia de capacidade.
-- [ ] SLOs iniciais de sync/render/envio definidos.
+- [x] Riscos de App Store/compliance registrados com mitigação.
+- [x] Riscos de mudança de frontend web com mitigação por fallback.
+- [x] Riscos de custo operacional de workers com estratégia de capacidade.
+- [x] SLOs iniciais de sync/render/envio definidos.
 
 ## Evidências desta Rodada
 
-- [ ] `markdownlint` sem erros.
-- [ ] revisão cruzada entre `roadmap`, `architecture`, `risks-and-limits` e `ios-prd` sem lacunas.
-- [ ] ADR-0002 registrada e marcada como aceita.
+- [x] revisão cruzada entre `roadmap`, `architecture`, `risks-and-limits` e `ios-prd` sem lacunas.
+- [x] ADR-0002 registrada e marcada como aceita.
+- [x] suíte de build/test verde (`swift build`, `swift test`) com bridge + iOS.
+- [x] app iOS instalado e lançado no simulador (`simctl install` + `simctl launch`) em tema escuro.
+- [x] app iOS operando em runtime WebKit com sessão real de `web.whatsapp.com` e isolamento por workspace.
+- [x] criação de workspace em fluxo real via `POST /v1/workspaces` com snapshot funcional.
+- [x] erro de API padronizado em `BridgeErrorEnvelope` validado por teste de `401`.
+- [x] retry/backoff no client bridge configurável por ambiente (`WASPACES_BRIDGE_RETRY_*`).
+- [x] pipeline interno de notificações na bridge (`/notifications`) com payload estruturado.
+- [ ] `markdownlint` sem erros (pendente de execução no CI de docs).
+
+## Pendências para fechamento de release pública
+
+- [ ] gate formal App Store (`go/no-go`) assinado por produto/engenharia/compliance.
+- [x] worker/provider real opcional implementado via WAHA (`WASPACES_BRIDGE_WAHA_ENABLED=1`) com QR/sync/send por workspace.
+- [ ] operação multi-workspace 100% real exige provider com suporte a múltiplas sessões simultâneas (ex.: WAHA Plus); WAHA Core opera em sessão única `default`.
+- [ ] push pipeline operacional (APNs) conectado ao stream da bridge.

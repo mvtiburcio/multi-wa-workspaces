@@ -18,7 +18,7 @@ targets:
       base:
         INFOPLIST_FILE: Resources/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: com.waspaces.ios
-        PRODUCT_NAME: WASpacesiOS
+        PRODUCT_NAME: WASpace
         SWIFT_VERSION: 6.0
         IPHONEOS_DEPLOYMENT_TARGET: 17.0
     dependencies:

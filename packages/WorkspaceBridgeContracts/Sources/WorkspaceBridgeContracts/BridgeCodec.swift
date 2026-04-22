@@ -7,6 +7,12 @@ public enum BridgeCodec {
     return formatter
   }
 
+  private static func makeFormatterWithoutFractionalSeconds() -> ISO8601DateFormatter {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime]
+    return formatter
+  }
+
   public static func makeEncoder() -> JSONEncoder {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.sortedKeys]
@@ -25,9 +31,12 @@ public enum BridgeCodec {
       if let value = makeFormatterWithFractionalSeconds().date(from: raw) {
         return value
       }
+      if let value = makeFormatterWithoutFractionalSeconds().date(from: raw) {
+        return value
+      }
       throw DecodingError.dataCorruptedError(
         in: container,
-        debugDescription: "Expected ISO8601 date with fractional seconds, got: \(raw)"
+        debugDescription: "Expected ISO8601 date, got: \(raw)"
       )
     }
     return decoder

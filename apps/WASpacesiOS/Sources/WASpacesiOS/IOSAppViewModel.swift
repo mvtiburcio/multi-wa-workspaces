@@ -1,10 +1,10 @@
 import Foundation
 import WorkspaceBridgeContracts
+import WorkspaceBridgeClient
 
 @MainActor
 public final class IOSAppViewModel: ObservableObject {
   public enum RuntimeMode: String {
-    case mock
     case live
   }
 
@@ -25,6 +25,9 @@ public final class IOSAppViewModel: ObservableObject {
   @Published public private(set) var isCallsLoading = false
   @Published public var isFallbackWebPresented = false
   @Published public private(set) var fallbackWebURL: URL?
+  @Published public var chatsSearchText = ""
+  @Published public var showUnreadOnly = false
+  @Published public private(set) var isCreatingWorkspace = false
 
   private let workspaceProvider: WorkspaceProvider
   private let chatsProvider: ChatsProvider
@@ -55,22 +58,23 @@ public final class IOSAppViewModel: ObservableObject {
     realtimeTask?.cancel()
   }
 
-  public static func makeDemo() -> IOSAppViewModel {
+  public static func makeLive() -> IOSAppViewModel {
     let config = AppConfiguration.fromEnvironment()
-    let client: SessionBridgeClient
-    if config.useMockBridge {
-      client = MockSessionBridgeClient()
-    } else {
-      client = HTTPBridgeClient(baseURL: config.bridgeBaseURL, token: config.bridgeToken)
-    }
+    let session = BridgeNetworking.makeSession(allowInsecureTLS: config.allowInsecureTLS)
+    let clientConfiguration = BridgeClientConfiguration(
+      baseURL: config.bridgeBaseURL,
+      token: config.bridgeToken,
+      allowInsecureTLS: config.allowInsecureTLS
+    )
+    let client = HTTPBridgeClient(configuration: clientConfiguration, session: session)
 
     return IOSAppViewModel(
       workspaceProvider: SessionBridgeWorkspaceProvider(syncProvider: client, qrProvider: client),
       chatsProvider: SessionBridgeChatsProvider(syncProvider: client, realtimeProvider: client, sendProvider: client),
-      updatesProvider: MockUpdatesProvider(),
-      callsProvider: MockCallsProvider(),
+      updatesProvider: BridgeUpdatesProvider(baseURL: config.bridgeBaseURL, token: config.bridgeToken, session: session),
+      callsProvider: BridgeCallsProvider(baseURL: config.bridgeBaseURL, token: config.bridgeToken, session: session),
       localStore: WorkspaceLocalStore(),
-      runtimeMode: config.useMockBridge ? .mock : .live
+      runtimeMode: .live
     )
   }
 
@@ -79,6 +83,21 @@ public final class IOSAppViewModel: ObservableObject {
       return nil
     }
     return workspaces.first(where: { $0.id == selectedWorkspaceID })
+  }
+
+  public var filteredConversations: [ConversationSummary] {
+    let query = chatsSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    return conversations.filter { conversation in
+      if showUnreadOnly && conversation.unreadCount == 0 {
+        return false
+      }
+      if query.isEmpty {
+        return true
+      }
+      let title = conversation.title.lowercased()
+      let preview = conversation.lastMessagePreview.lowercased()
+      return title.contains(query) || preview.contains(query)
+    }
   }
 
   public func bootstrap() async {
@@ -102,7 +121,7 @@ public final class IOSAppViewModel: ObservableObject {
       isBootstrapping = false
     } catch {
       isBootstrapping = false
-      bootstrapErrorMessage = "Falha ao carregar dados iniciais. Verifique a Bridge ou use modo demo."
+      bootstrapErrorMessage = "Falha ao carregar dados iniciais. Verifique a Session Bridge e o token."
       recordTelemetry("bootstrap_failed error=\(error)")
     }
   }
@@ -139,6 +158,28 @@ public final class IOSAppViewModel: ObservableObject {
       qrState = try await workspaceProvider.fetchQRCode(for: selectedWorkspaceID).payload
     } catch {
       recordTelemetry("qr_reload_failed workspace_id=\(selectedWorkspaceID.uuidString) error=\(error)")
+    }
+  }
+
+  public func createWorkspace(named rawName: String) async -> Bool {
+    let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !name.isEmpty, !isCreatingWorkspace else {
+      return false
+    }
+
+    isCreatingWorkspace = true
+    defer { isCreatingWorkspace = false }
+
+    do {
+      let workspace = try await workspaceProvider.createWorkspace(name: name)
+      workspaces.append(workspace)
+      workspaces.sort { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+      try await selectWorkspace(id: workspace.id)
+      recordTelemetry("workspace_created workspace_id=\(workspace.id.uuidString)")
+      return true
+    } catch {
+      recordTelemetry("workspace_create_failed name=\(name) error=\(error)")
+      return false
     }
   }
 
@@ -250,13 +291,13 @@ public final class IOSAppViewModel: ObservableObject {
       return
     }
 
-    await localStore.setFallbackState(.degraded(reason: "mock_parser_mismatch"), workspaceID: workspaceID)
+    await localStore.setFallbackState(.degraded(reason: "parser_mismatch"), workspaceID: workspaceID)
     if let state = await localStore.state(for: workspaceID) {
       applyState(state)
     }
 
     await localStore.setFallbackState(
-      .webViewFallback(reason: "mock_parser_mismatch", startedAt: Date()),
+      .webViewFallback(reason: "parser_mismatch", startedAt: Date()),
       workspaceID: workspaceID
     )
     if let state = await localStore.state(for: workspaceID) {

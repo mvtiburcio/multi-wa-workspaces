@@ -1,0 +1,41 @@
+services:
+  bridge:
+    build:
+      context: ../..
+      dockerfile: deploy/bridge/Dockerfile
+    container_name: waspace-bridge
+    restart: unless-stopped
+    environment:
+      WASPACES_BRIDGE_API_TOKEN: ${WASPACES_BRIDGE_API_TOKEN}
+      WASPACES_BRIDGE_DB_PATH: /var/lib/waspace/bridge-session.sqlite
+    volumes:
+      - bridge_data:/var/lib/waspace
+    networks:
+      - waspace_net
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: waspace-caddy
+    restart: unless-stopped
+    depends_on:
+      - bridge
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - waspace_net
+
+volumes:
+  bridge_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  waspace_net:
+    driver: bridge

@@ -3,6 +3,7 @@ import WorkspaceBridgeContracts
 
 public protocol SyncProvider: Sendable {
   func fetchWorkspaceList() async throws -> [WorkspaceSnapshot]
+  func createWorkspace(_ request: CreateWorkspaceRequest) async throws -> WorkspaceSnapshot
   func fetchSnapshot(for workspaceID: UUID) async throws -> BridgeEnvelope<SyncSnapshotPayload>
 }
 

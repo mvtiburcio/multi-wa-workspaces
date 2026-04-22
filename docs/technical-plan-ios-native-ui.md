@@ -4,6 +4,15 @@
 
 Definir o plano técnico para entregar um app iOS com interface nativa completa para múltiplos workspaces, mantendo tempo real contínuo por meio de Session Bridge Cloud.
 
+## Status Atual da Implementação (22 de abril de 2026)
+
+- app iOS com navegação por abas (`Chats`, `Atualizações`, `Chamadas`, `Ajustes`) e switcher de workspace por avatar;
+- fluxo funcional `QR -> Inbox -> Thread -> Envio` com fallback manual para WebView;
+- bridge MVP com endpoints reais `workspaces`, `sync`, `events`, `send`, `qr`, `updates`, `calls`;
+- `Chats` com busca e filtro de não lidas + criação de workspace real no switcher;
+- contratos compartilhados versionados e usados por app + bridge;
+- build e testes automatizados verdes para trilhas iOS/macOS/bridge.
+
 ## Escopo Funcional Completo (v1)
 
 - onboarding de workspace por QR;

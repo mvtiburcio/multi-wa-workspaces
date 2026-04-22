@@ -2,72 +2,9 @@ import Foundation
 import WorkspaceBridgeContracts
 import WorkspaceBridgeClient
 
-public enum UpdateKind: String, Hashable, Codable, Sendable {
-  case status
-  case channel
-}
-
-public struct UpdateItem: Identifiable, Hashable, Codable, Sendable {
-  public let id: String
-  public let workspaceID: UUID
-  public let title: String
-  public let subtitle: String
-  public let timestamp: Date
-  public let kind: UpdateKind
-  public let unread: Bool
-
-  public init(
-    id: String,
-    workspaceID: UUID,
-    title: String,
-    subtitle: String,
-    timestamp: Date,
-    kind: UpdateKind,
-    unread: Bool
-  ) {
-    self.id = id
-    self.workspaceID = workspaceID
-    self.title = title
-    self.subtitle = subtitle
-    self.timestamp = timestamp
-    self.kind = kind
-    self.unread = unread
-  }
-}
-
-public enum CallDirection: String, Hashable, Codable, Sendable {
-  case incoming
-  case outgoing
-  case missed
-}
-
-public struct CallItem: Identifiable, Hashable, Codable, Sendable {
-  public let id: String
-  public let workspaceID: UUID
-  public let contactName: String
-  public let occurredAt: Date
-  public let durationSeconds: Int
-  public let direction: CallDirection
-
-  public init(
-    id: String,
-    workspaceID: UUID,
-    contactName: String,
-    occurredAt: Date,
-    durationSeconds: Int,
-    direction: CallDirection
-  ) {
-    self.id = id
-    self.workspaceID = workspaceID
-    self.contactName = contactName
-    self.occurredAt = occurredAt
-    self.durationSeconds = durationSeconds
-    self.direction = direction
-  }
-}
-
 public protocol WorkspaceProvider: Sendable {
   func fetchWorkspaceList() async throws -> [WorkspaceSnapshot]
+  func createWorkspace(name: String) async throws -> WorkspaceSnapshot
   func fetchQRCode(for workspaceID: UUID) async throws -> BridgeEnvelope<WorkspaceQRState>
 }
 
@@ -85,6 +22,10 @@ public protocol CallsProvider: Sendable {
   func fetchCalls(for workspaceID: UUID) async throws -> [CallItem]
 }
 
+public enum BridgeSupplementaryError: Error {
+  case invalidResponse
+}
+
 public struct SessionBridgeWorkspaceProvider: WorkspaceProvider {
   private let syncProvider: any SyncProvider
   private let qrProvider: any QRProvider
@@ -96,6 +37,10 @@ public struct SessionBridgeWorkspaceProvider: WorkspaceProvider {
 
   public func fetchWorkspaceList() async throws -> [WorkspaceSnapshot] {
     try await syncProvider.fetchWorkspaceList()
+  }
+
+  public func createWorkspace(name: String) async throws -> WorkspaceSnapshot {
+    try await syncProvider.createWorkspace(CreateWorkspaceRequest(name: name))
   }
 
   public func fetchQRCode(for workspaceID: UUID) async throws -> BridgeEnvelope<WorkspaceQRState> {
@@ -128,6 +73,60 @@ public struct SessionBridgeChatsProvider: ChatsProvider {
 
   public func send(_ command: SendMessageCommand) async throws -> SendMessageResult {
     try await sendProvider.send(command)
+  }
+}
+
+public final class BridgeUpdatesProvider: UpdatesProvider, @unchecked Sendable {
+  private let baseURL: URL
+  private let token: String
+  private let session: URLSession
+
+  public init(baseURL: URL, token: String, session: URLSession = .shared) {
+    self.baseURL = baseURL
+    self.token = token
+    self.session = session
+  }
+
+  public func fetchUpdates(for workspaceID: UUID) async throws -> [UpdateItem] {
+    let url = baseURL.appending(path: "/v1/workspaces/\(workspaceID.uuidString)/updates")
+    var request = URLRequest(url: url)
+    request.httpMethod = "GET"
+    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+    let (data, response) = try await session.data(for: request)
+    guard let httpResponse = response as? HTTPURLResponse,
+          (200..<300).contains(httpResponse.statusCode) else {
+      throw BridgeSupplementaryError.invalidResponse
+    }
+
+    return try BridgeCodec.makeDecoder().decode([UpdateItem].self, from: data)
+  }
+}
+
+public final class BridgeCallsProvider: CallsProvider, @unchecked Sendable {
+  private let baseURL: URL
+  private let token: String
+  private let session: URLSession
+
+  public init(baseURL: URL, token: String, session: URLSession = .shared) {
+    self.baseURL = baseURL
+    self.token = token
+    self.session = session
+  }
+
+  public func fetchCalls(for workspaceID: UUID) async throws -> [CallItem] {
+    let url = baseURL.appending(path: "/v1/workspaces/\(workspaceID.uuidString)/calls")
+    var request = URLRequest(url: url)
+    request.httpMethod = "GET"
+    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+    let (data, response) = try await session.data(for: request)
+    guard let httpResponse = response as? HTTPURLResponse,
+          (200..<300).contains(httpResponse.statusCode) else {
+      throw BridgeSupplementaryError.invalidResponse
+    }
+
+    return try BridgeCodec.makeDecoder().decode([CallItem].self, from: data)
   }
 }
 

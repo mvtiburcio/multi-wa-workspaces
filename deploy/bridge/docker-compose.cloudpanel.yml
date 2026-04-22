@@ -1,0 +1,17 @@
+services:
+  bridge:
+    build:
+      context: ../..
+      dockerfile: deploy/bridge/Dockerfile
+    container_name: waspace-bridge
+    restart: unless-stopped
+    environment:
+      WASPACES_BRIDGE_API_TOKEN: ${WASPACES_BRIDGE_API_TOKEN}
+      WASPACES_BRIDGE_DB_PATH: /var/lib/waspace/bridge-session.sqlite
+    ports:
+      - "127.0.0.1:18080:8080"
+    volumes:
+      - bridge_data:/var/lib/waspace
+
+volumes:
+  bridge_data:

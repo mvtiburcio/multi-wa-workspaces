@@ -117,6 +117,17 @@ public struct MockSessionBridgeClient: SessionBridgeClient {
     workspaces
   }
 
+  public func createWorkspace(_ request: CreateWorkspaceRequest) async throws -> WorkspaceSnapshot {
+    WorkspaceSnapshot(
+      id: UUID(),
+      name: request.name,
+      connectivity: .qrRequired,
+      unreadTotal: 0,
+      lastSyncAt: Date(),
+      workerState: .provisioning
+    )
+  }
+
   public func fetchSnapshot(for workspaceID: UUID) async throws -> BridgeEnvelope<SyncSnapshotPayload> {
     guard let workspace = workspaces.first(where: { $0.id == workspaceID }) else {
       throw MockBridgeError.workspaceNotFound

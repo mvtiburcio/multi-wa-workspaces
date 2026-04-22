@@ -166,7 +166,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.waspaces.ios;
-				PRODUCT_NAME = WASpacesiOS;
+				PRODUCT_NAME = WASpace;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -248,7 +248,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.waspaces.ios;
-				PRODUCT_NAME = WASpacesiOS;
+				PRODUCT_NAME = WASpace;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

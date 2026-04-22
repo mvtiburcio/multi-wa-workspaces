@@ -4,24 +4,39 @@ import WorkspaceBridgeClient
 public struct AppConfiguration: Sendable {
   public let bridgeBaseURL: URL
   public let bridgeToken: String
-  public let useMockBridge: Bool
+  public let allowInsecureTLS: Bool
 
   public init(
     bridgeBaseURL: URL,
     bridgeToken: String,
-    useMockBridge: Bool
+    allowInsecureTLS: Bool
   ) {
     self.bridgeBaseURL = bridgeBaseURL
     self.bridgeToken = bridgeToken
-    self.useMockBridge = useMockBridge
+    self.allowInsecureTLS = allowInsecureTLS
   }
 
   public static func fromEnvironment() -> AppConfiguration {
-    let shared = BridgeClientConfiguration.fromEnvironment()
     let env = ProcessInfo.processInfo.environment
-    let useMockRaw = env["WASPACES_IOS_USE_MOCK"]?.lowercased() ?? "1"
-    let useMock = useMockRaw == "1" || useMockRaw == "true" || useMockRaw == "yes"
+    let info = Bundle.main.infoDictionary ?? [:]
 
-    return AppConfiguration(bridgeBaseURL: shared.baseURL, bridgeToken: shared.token, useMockBridge: useMock)
+    let envBaseURL = env["WASPACES_BRIDGE_BASE_URL"]
+    let plistBaseURL = info["WASPACES_BRIDGE_BASE_URL"] as? String
+    let baseURLString = envBaseURL?.isEmpty == false ? envBaseURL : plistBaseURL
+    let baseURL = URL(string: baseURLString ?? "") ?? URL(string: "http://127.0.0.1:8080")!
+
+    let envToken = env["WASPACES_BRIDGE_API_TOKEN"]
+    let plistToken = info["WASPACES_BRIDGE_API_TOKEN"] as? String
+    let token = (envToken?.isEmpty == false ? envToken : plistToken) ?? "dev-local-token"
+
+    let envInsecure = env["WASPACES_BRIDGE_ALLOW_INSECURE_TLS"]
+    let plistInsecure = info["WASPACES_BRIDGE_ALLOW_INSECURE_TLS"] as? Bool
+    let allowInsecureTLS = envInsecure == "1" || (envInsecure == nil && (plistInsecure ?? false))
+
+    return AppConfiguration(
+      bridgeBaseURL: baseURL,
+      bridgeToken: token,
+      allowInsecureTLS: allowInsecureTLS
+    )
   }
 }

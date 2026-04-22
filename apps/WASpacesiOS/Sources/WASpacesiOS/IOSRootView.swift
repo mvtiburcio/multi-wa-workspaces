@@ -2,6 +2,7 @@ import SwiftUI
 import WorkspaceBridgeContracts
 #if os(iOS)
 import SafariServices
+import CoreImage.CIFilterBuiltins
 #endif
 
 private var leadingToolbarPlacement: ToolbarItemPlacement {
@@ -17,6 +18,14 @@ private var trailingToolbarPlacement: ToolbarItemPlacement {
   return .topBarTrailing
   #else
   return .automatic
+  #endif
+}
+
+private var threadBackgroundColor: Color {
+  #if os(iOS)
+  return Color(uiColor: .systemBackground)
+  #else
+  return Color.black.opacity(0.05)
   #endif
 }
 
@@ -100,8 +109,11 @@ private struct ChatsRootView: View {
             description: Text("Conecte um workspace via QR para iniciar.")
           )
           .padding()
+        } else if viewModel.filteredConversations.isEmpty {
+          ContentUnavailableView.search(text: viewModel.chatsSearchText)
+            .padding()
         } else {
-          List(viewModel.conversations) { conversation in
+          List(viewModel.filteredConversations) { conversation in
             NavigationLink(value: ChatsRoute(conversationID: conversation.id)) {
               ConversationRow(conversation: conversation)
             }
@@ -110,6 +122,7 @@ private struct ChatsRootView: View {
           .listStyle(.plain)
         }
       }
+      .searchable(text: $viewModel.chatsSearchText, prompt: "Buscar chats")
       .navigationTitle("Chats")
       .navigationDestination(for: ChatsRoute.self) { route in
         ThreadScreen(viewModel: viewModel, conversationID: route.conversationID)
@@ -121,14 +134,23 @@ private struct ChatsRootView: View {
         )
 
         ToolbarItem(placement: trailingToolbarPlacement) {
-          Button {
-            Task {
-              await viewModel.simulateFallbackDegradation()
+          HStack(spacing: 10) {
+            Button {
+              viewModel.showUnreadOnly.toggle()
+            } label: {
+              Image(systemName: viewModel.showUnreadOnly ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
             }
-          } label: {
-            Image(systemName: "exclamationmark.triangle")
+            .accessibilityLabel("Filtrar não lidas")
+
+            Button {
+              Task {
+                await viewModel.simulateFallbackDegradation()
+              }
+            } label: {
+              Image(systemName: "exclamationmark.triangle")
+            }
+            .accessibilityLabel("Simular degradação")
           }
-          .accessibilityLabel("Simular degradação")
         }
       }
     }
@@ -148,7 +170,7 @@ private struct UpdatesRootView: View {
           ContentUnavailableView(
             "Sem atualizações",
             systemImage: "circle.dotted",
-            description: Text("Feed read-only mockado para o workspace selecionado.")
+            description: Text("Sem dados recentes para o workspace selecionado.")
           )
         } else {
           List(viewModel.updates) { item in
@@ -181,7 +203,7 @@ private struct CallsRootView: View {
           ContentUnavailableView(
             "Sem chamadas",
             systemImage: "phone.arrow.up.right",
-            description: Text("Histórico read-only mockado para o workspace selecionado.")
+            description: Text("Sem chamadas registradas para o workspace selecionado.")
           )
         } else {
           List(viewModel.calls) { item in
@@ -231,10 +253,10 @@ private struct SettingsRootView: View {
           }
         }
 
-        Section("Modo") {
+        Section("Conexão") {
           Label(
-            viewModel.runtimeMode == .mock ? "Demo" : "Bridge real",
-            systemImage: viewModel.runtimeMode == .mock ? "testtube.2" : "antenna.radiowaves.left.and.right"
+            "Session Bridge ativa",
+            systemImage: "antenna.radiowaves.left.and.right"
           )
         }
 
@@ -305,7 +327,7 @@ private struct ThreadScreen: View {
           .listRowBackground(Color.clear)
       }
       .listStyle(.plain)
-      .background(Color.secondary.opacity(0.08))
+      .background(threadBackgroundColor)
 
       ComposerBar(
         text: $viewModel.composerText,
@@ -369,6 +391,7 @@ private struct WorkspaceSwitcherToolbarItem: ToolbarContent {
 private struct WorkspaceSwitcherSheet: View {
   @ObservedObject var viewModel: IOSAppViewModel
   @Environment(\.dismiss) private var dismiss
+  @State private var newWorkspaceName = ""
 
   var body: some View {
     NavigationStack {
@@ -381,40 +404,12 @@ private struct WorkspaceSwitcherSheet: View {
                 dismiss()
               }
             } label: {
-              HStack(spacing: 12) {
-                Circle()
-                  .fill(connectivityColor(workspace.connectivity))
-                  .frame(width: 38, height: 38)
-                  .overlay(
-                    Text(String(workspace.name.prefix(1)).uppercased())
-                      .font(.headline)
-                      .foregroundStyle(.white)
-                  )
-
-                VStack(alignment: .leading, spacing: 4) {
-                  Text(workspace.name)
-                    .font(.headline)
-                  Text(connectivityLabel(workspace.connectivity))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                if workspace.unreadTotal > 0 {
-                  Text("\(workspace.unreadTotal)")
-                    .font(.caption.bold())
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(Color.green))
-                    .foregroundStyle(.white)
-                }
-
-                if viewModel.selectedWorkspaceID == workspace.id {
-                  Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                }
-              }
+              WorkspaceSelectionRow(
+                workspace: workspace,
+                isSelected: viewModel.selectedWorkspaceID == workspace.id,
+                connectivityLabel: connectivityLabel(workspace.connectivity),
+                connectivityColor: connectivityColor(workspace.connectivity)
+              )
             }
             .buttonStyle(.plain)
           }
@@ -425,10 +420,7 @@ private struct WorkspaceSwitcherSheet: View {
             VStack(alignment: .leading, spacing: 8) {
               Text("Estado: \(qrLabel(qrState.state))")
                 .font(.subheadline.weight(.semibold))
-              Text(qrState.qrPayload)
-                .font(.caption.monospaced())
-                .lineLimit(1)
-                .truncationMode(.middle)
+              QRCodeCard(payload: qrState.qrPayload)
               Text("Expira em \(qrState.expiresAt.formatted(date: .omitted, time: .shortened))")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -444,6 +436,33 @@ private struct WorkspaceSwitcherSheet: View {
               await viewModel.reloadQRCodeForSelectedWorkspace()
             }
           }
+        }
+
+        Section("Novo workspace") {
+          TextField("Nome do workspace", text: $newWorkspaceName)
+            #if os(iOS)
+            .textInputAutocapitalization(.words)
+            #endif
+            .autocorrectionDisabled()
+
+          Button {
+            Task {
+              let created = await viewModel.createWorkspace(named: newWorkspaceName)
+              if created {
+                newWorkspaceName = ""
+                dismiss()
+              }
+            }
+          } label: {
+            if viewModel.isCreatingWorkspace {
+              ProgressView()
+                .frame(maxWidth: .infinity)
+            } else {
+              Text("Criar e conectar via QR")
+                .frame(maxWidth: .infinity)
+            }
+          }
+          .disabled(viewModel.isCreatingWorkspace || newWorkspaceName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
       }
       .navigationTitle("Selecionar workspace")
@@ -497,6 +516,110 @@ private struct WorkspaceSwitcherSheet: View {
       return "Degradado"
     case .disconnected:
       return "Desconectado"
+    }
+  }
+}
+
+private struct QRCodeCard: View {
+  let payload: String
+
+  var body: some View {
+    #if os(iOS)
+    VStack(alignment: .leading, spacing: 8) {
+      if let image = qrImage(from: payload) {
+        Image(uiImage: image)
+          .interpolation(.none)
+          .resizable()
+          .scaledToFit()
+          .frame(maxWidth: .infinity)
+          .frame(height: 220)
+          .padding(8)
+          .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+              .fill(Color.white)
+          )
+      } else {
+        Text("Não foi possível gerar o QR para este payload.")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+
+      Text(payload)
+        .font(.caption2.monospaced())
+        .lineLimit(2)
+        .truncationMode(.middle)
+        .textSelection(.enabled)
+    }
+    #else
+    Text(payload)
+      .font(.caption2.monospaced())
+      .lineLimit(2)
+      .truncationMode(.middle)
+    #endif
+  }
+
+  #if os(iOS)
+  private let context = CIContext()
+  private let filter = CIFilter.qrCodeGenerator()
+
+  private func qrImage(from raw: String) -> UIImage? {
+    let data = Data(raw.utf8)
+    filter.setValue(data, forKey: "inputMessage")
+    filter.correctionLevel = "M"
+    guard let outputImage = filter.outputImage else {
+      return nil
+    }
+
+    let transform = CGAffineTransform(scaleX: 12, y: 12)
+    let scaled = outputImage.transformed(by: transform)
+    guard let cgImage = context.createCGImage(scaled, from: scaled.extent) else {
+      return nil
+    }
+    return UIImage(cgImage: cgImage)
+  }
+  #endif
+}
+
+private struct WorkspaceSelectionRow: View {
+  let workspace: WorkspaceSnapshot
+  let isSelected: Bool
+  let connectivityLabel: String
+  let connectivityColor: Color
+
+  var body: some View {
+    HStack(spacing: 12) {
+      Circle()
+        .fill(connectivityColor)
+        .frame(width: 38, height: 38)
+        .overlay(
+          Text(String(workspace.name.prefix(1)).uppercased())
+            .font(.headline)
+            .foregroundStyle(.white)
+        )
+
+      VStack(alignment: .leading, spacing: 4) {
+        Text(workspace.name)
+          .font(.headline)
+        Text(connectivityLabel)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+
+      Spacer()
+
+      if workspace.unreadTotal > 0 {
+        Text("\(workspace.unreadTotal)")
+          .font(.caption.bold())
+          .padding(.horizontal, 8)
+          .padding(.vertical, 4)
+          .background(Capsule().fill(Color.green))
+          .foregroundStyle(.white)
+      }
+
+      if isSelected {
+        Image(systemName: "checkmark.circle.fill")
+          .foregroundStyle(.green)
+      }
     }
   }
 }
@@ -670,12 +793,12 @@ private struct ThreadRow: View {
     VStack(alignment: .leading, spacing: 6) {
       Text(message.contentText)
         .font(.body)
-        .foregroundStyle(.primary)
+        .foregroundColor(isIncoming ? .primary : .white)
 
       HStack(spacing: 6) {
         Text(message.sentAt.formatted(date: .omitted, time: .shortened))
           .font(.caption2)
-          .foregroundStyle(.secondary)
+          .foregroundColor(isIncoming ? .secondary : .white.opacity(0.9))
         Spacer(minLength: 4)
         Text(deliveryLabel(message.delivery))
           .font(.caption2.weight(.semibold))
@@ -686,9 +809,20 @@ private struct ThreadRow: View {
     .padding(.vertical, 8)
     .background(
       RoundedRectangle(cornerRadius: 14)
-        .fill(isIncoming ? Color.white : Color(red: 0.86, green: 0.97, blue: 0.83))
+        .fill(incomingBubbleColor(isIncoming: isIncoming))
         .shadow(color: Color.black.opacity(0.08), radius: 1, x: 0, y: 1)
     )
+  }
+
+  private func incomingBubbleColor(isIncoming: Bool) -> Color {
+    if isIncoming {
+      #if os(iOS)
+      return Color(uiColor: .secondarySystemBackground)
+      #else
+      return Color.gray.opacity(0.2)
+      #endif
+    }
+    return Color(red: 0.12, green: 0.60, blue: 0.40)
   }
 
   private func deliveryLabel(_ status: DeliveryStatus) -> String {

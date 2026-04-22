@@ -1,0 +1,9 @@
+{
+  auto_https on
+}
+
+{$DOMAIN} {
+  encode gzip zstd
+
+  reverse_proxy bridge:8080
+}

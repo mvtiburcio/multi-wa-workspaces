@@ -87,7 +87,14 @@ let package = Package(
     ),
     .target(
       name: "WASpacesiOSCore",
-      dependencies: ["WorkspaceBridgeContracts", "WorkspaceBridgeClient"],
+      dependencies: [
+        "WorkspaceBridgeContracts",
+        "WorkspaceBridgeClient",
+        "WorkspaceDomain",
+        "WorkspacePersistence",
+        "WorkspaceSession",
+        "WorkspaceApplicationServices"
+      ],
       path: "apps/WASpacesiOS/Sources/WASpacesiOS"
     ),
     .executableTarget(

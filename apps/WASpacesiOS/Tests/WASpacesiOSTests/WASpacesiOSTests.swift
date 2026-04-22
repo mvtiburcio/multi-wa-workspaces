@@ -224,7 +224,7 @@ struct WASpacesiOSTests {
       updatesProvider: MockUpdatesProvider(),
       callsProvider: MockCallsProvider(),
       localStore: WorkspaceLocalStore(),
-      runtimeMode: .mock
+      runtimeMode: .live
     )
   }
 }
