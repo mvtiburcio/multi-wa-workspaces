@@ -11,15 +11,11 @@ public final class WebViewPool {
     var lastAccessedAt: Date
   }
 
-  public let maxWarmWebViews: Int?
+  public private(set) var maxWarmWebViews: Int?
   private var entries: [UUID: Entry] = [:]
 
   public init(maxWarmWebViews: Int? = nil) {
-    if let maxWarmWebViews {
-      self.maxWarmWebViews = max(1, maxWarmWebViews)
-    } else {
-      self.maxWarmWebViews = nil
-    }
+    setMaxWarmWebViews(maxWarmWebViews)
   }
 
   public var cachedWorkspaceIDs: [UUID] {
@@ -63,6 +59,19 @@ public final class WebViewPool {
     return webView
   }
 
+  public var cachedCount: Int {
+    entries.count
+  }
+
+  public func setMaxWarmWebViews(_ value: Int?) {
+    if let value {
+      maxWarmWebViews = max(1, value)
+    } else {
+      maxWarmWebViews = nil
+    }
+    evictIfNeeded(excluding: nil)
+  }
+
   public func release(workspaceID: UUID) {
     guard let entry = entries.removeValue(forKey: workspaceID) else {
       return
@@ -80,7 +89,7 @@ public final class WebViewPool {
     entries[workspaceID] = entry
   }
 
-  private func evictIfNeeded(excluding workspaceID: UUID) {
+  private func evictIfNeeded(excluding workspaceID: UUID?) {
     guard let maxWarmWebViews else {
       return
     }
@@ -88,7 +97,7 @@ public final class WebViewPool {
     while entries.count > maxWarmWebViews {
       let candidate = entries
         .values
-        .filter { $0.workspaceID != workspaceID }
+        .filter { workspaceID == nil || $0.workspaceID != workspaceID }
         .min { $0.lastAccessedAt < $1.lastAccessedAt }
 
       guard let candidate else {

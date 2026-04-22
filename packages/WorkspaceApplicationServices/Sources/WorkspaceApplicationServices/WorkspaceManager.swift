@@ -2,6 +2,7 @@ import Combine
 import Foundation
 import OSLog
 import WebKit
+import WorkspaceBridgeContracts
 import WorkspaceDomain
 import WorkspaceSession
 
@@ -25,6 +26,7 @@ public final class WorkspaceManager: ObservableObject, WorkspaceManaging {
   private let colorPalette = ["blue", "green", "orange", "red", "teal", "indigo", "pink", "amber"]
   private var isSelectionInFlight = false
   private var queuedSelectionID: UUID?
+  private var bridgeRealtimeEnabled = false
 
   public init(
     store: WorkspaceStoring,
@@ -304,7 +306,57 @@ public final class WorkspaceManager: ObservableObject, WorkspaceManaging {
     }
   }
 
+  public func setBridgeRealtimeEnabled(_ enabled: Bool) {
+    bridgeRealtimeEnabled = enabled
+  }
+
+  public func setWarmWebViewLimit(_ limit: Int?) {
+    guard let controller = sessionController as? WebSessionWarmPoolControlling else {
+      return
+    }
+    controller.setWarmWebViewLimit(limit)
+  }
+
+  public func currentSessionDiagnostics() -> WebSessionDiagnostics? {
+    guard let reporter = sessionController as? WebSessionDiagnosticsReporting else {
+      return nil
+    }
+    return reporter.diagnostics()
+  }
+
+  public func applyBridgeWorkspaceSnapshot(_ snapshot: WorkspaceSnapshot) {
+    guard workspaces.contains(where: { $0.id == snapshot.id }) else {
+      return
+    }
+
+    let mappedState = mapBridgeConnectivity(snapshot.connectivity)
+    do {
+      try store.updateState(id: snapshot.id, state: mappedState)
+    } catch {
+      logger.error(
+        "workspace_id=\(snapshot.id.uuidString, privacy: .public) event=bridge_state_sync duration_ms=0 result=\(String(describing: error), privacy: .public)"
+      )
+    }
+
+    updateWorkspaceInMemory(id: snapshot.id) { workspace in
+      workspace.state = mappedState
+    }
+
+    applyUnreadCount(workspaceID: snapshot.id, count: snapshot.unreadTotal, source: "bridge_snapshot")
+  }
+
+  public func applyBridgeUnreadCount(workspaceID: UUID, unreadCount: Int) {
+    guard workspaces.contains(where: { $0.id == workspaceID }) else {
+      return
+    }
+    applyUnreadCount(workspaceID: workspaceID, count: unreadCount, source: "bridge_realtime")
+  }
+
   private func handleSessionState(workspaceID: UUID, state: WorkspaceState) async {
+    if bridgeRealtimeEnabled {
+      return
+    }
+
     do {
       try store.updateState(id: workspaceID, state: state)
       updateWorkspaceInMemory(id: workspaceID) { workspace in
@@ -318,26 +370,10 @@ public final class WorkspaceManager: ObservableObject, WorkspaceManaging {
   }
 
   private func handleUnreadCountChanged(workspaceID: UUID, previous: Int, current: Int) async {
-    unreadByWorkspace[workspaceID] = current
-
-    guard current > previous, selectedWorkspaceID != workspaceID else {
+    if bridgeRealtimeEnabled {
       return
     }
-
-    let workspaceName: String
-    if let workspace = workspaces.first(where: { $0.id == workspaceID }) {
-      workspaceName = workspace.name
-    } else {
-      workspaceName = "Workspace"
-    }
-
-    let title = workspaceName
-    let body = current == 1 ? "1 nova mensagem no workspace." : "\(current) novas mensagens no workspace."
-    onWorkspaceNotification?(title, body)
-
-    logger.info(
-      "workspace_id=\(workspaceID.uuidString, privacy: .public) event=workspace_notification duration_ms=0 result=unread=\(current, privacy: .public)"
-    )
+    applyUnreadCount(workspaceID: workspaceID, count: current, source: "webview_title")
   }
 
   private func nextColorTag() -> String {
@@ -347,6 +383,40 @@ public final class WorkspaceManager: ObservableObject, WorkspaceManaging {
 
   private func reloadFromStore() throws {
     workspaces = try store.listWorkspaces()
+  }
+
+  private func applyUnreadCount(workspaceID: UUID, count: Int, source: String) {
+    let previous = unreadByWorkspace[workspaceID] ?? 0
+    unreadByWorkspace[workspaceID] = count
+
+    guard count > previous, selectedWorkspaceID != workspaceID else {
+      return
+    }
+
+    let workspaceName = workspaces.first(where: { $0.id == workspaceID })?.name ?? "Workspace"
+    let body = count == 1 ? "1 nova mensagem no workspace." : "\(count) novas mensagens no workspace."
+    onWorkspaceNotification?(workspaceName, body)
+
+    logger.info(
+      "workspace_id=\(workspaceID.uuidString, privacy: .public) event=workspace_notification duration_ms=0 result=source=\(source, privacy: .public)_unread=\(count, privacy: .public)"
+    )
+  }
+
+  private func mapBridgeConnectivity(_ state: ConnectivityState) -> WorkspaceState {
+    switch state {
+    case .cold:
+      .cold
+    case .connecting:
+      .loading
+    case .qrRequired:
+      .qrRequired
+    case .connected:
+      .connected
+    case .degraded:
+      .disconnected
+    case .disconnected:
+      .disconnected
+    }
   }
 
   private func updateWorkspaceInMemory(id: UUID, mutate: (inout Workspace) -> Void) {

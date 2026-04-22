@@ -29,3 +29,7 @@ DerivedData/
 
 # Logs
 *.log
+
+# Local generated artifacts
+dist/
+bridge-session.sqlite

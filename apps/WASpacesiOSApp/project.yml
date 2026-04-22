@@ -1,0 +1,35 @@
+name: WASpacesiOSApp
+options:
+  bundleIdPrefix: com.waspaces
+  deploymentTarget:
+    iOS: '17.0'
+  createIntermediateGroups: true
+packages:
+  WASpacesPackage:
+    path: ../..
+targets:
+  WASpacesiOSApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+      - path: Resources
+    settings:
+      base:
+        INFOPLIST_FILE: Resources/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.waspaces.ios
+        PRODUCT_NAME: WASpacesiOS
+        SWIFT_VERSION: 6.0
+        IPHONEOS_DEPLOYMENT_TARGET: 17.0
+    dependencies:
+      - package: WASpacesPackage
+        product: WASpacesiOSCore
+schemes:
+  WASpacesiOSApp:
+    build:
+      targets:
+        WASpacesiOSApp: all
+    run:
+      config: Debug
+    test:
+      config: Debug

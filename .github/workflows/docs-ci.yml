@@ -35,3 +35,17 @@ jobs:
         run: swift build
       - name: Test
         run: swift test
+
+  ios-build-test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build iOS target (simulator)
+        run: |
+          if xcodebuild -scheme WASpacesiOS -showdestinations | grep -q "platform:iOS Simulator"; then
+            xcodebuild -scheme WASpacesiOS -destination "generic/platform=iOS Simulator" build CODE_SIGNING_ALLOWED=NO
+          else
+            echo "Skipping simulator build: iOS Simulator platform unavailable on runner."
+          fi
+      - name: Test iOS app logic target
+        run: swift test --filter WASpacesiOSTests
