@@ -57,6 +57,7 @@
 ## Pendências para fechamento de release pública
 
 - [ ] gate formal App Store (`go/no-go`) assinado por produto/engenharia/compliance.
-- [x] worker/provider real opcional implementado via WAHA (`WASPACES_BRIDGE_WAHA_ENABLED=1`) com QR/sync/send por workspace.
-- [ ] operação multi-workspace 100% real exige provider com suporte a múltiplas sessões simultâneas (ex.: WAHA Plus); WAHA Core opera em sessão única `default`.
+- [x] provider real primário no app iOS via WebKit Session Runtime (sem mock no runtime normal).
+- [x] worker/provider real opcional via WAHA mantido apenas por feature flag (`WASPACES_BRIDGE_WAHA_ENABLED=1`).
+- [ ] hardening de parser DOM para reduzir risco de quebra por mudanças de seletor do WhatsApp Web.
 - [ ] push pipeline operacional (APNs) conectado ao stream da bridge.

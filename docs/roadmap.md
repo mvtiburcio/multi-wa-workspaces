@@ -57,6 +57,7 @@ Entregas já concluídas nesta fase:
 
 - shell iOS nativo com abas `Chats`, `Atualizações`, `Chamadas`, `Ajustes`;
 - `Chats` conectado ao runtime WebKit real (`web.whatsapp.com`) com switcher de workspace;
+- app iOS iniciando pela UI nativa (`IOSRootView`) com providers reais WebKit (sem mock em runtime normal);
 - fluxo `Workspace -> Inbox -> Thread -> Envio` com estados `pending/sent/failed`;
 - busca e filtro de não lidas em `Chats`;
 - switcher de workspace com QR e criação de novo workspace via bridge (`POST /v1/workspaces`);
@@ -88,6 +89,7 @@ Entregas já concluídas nesta fase:
 - retry/backoff configurável no client iOS (`WASPACES_BRIDGE_RETRY_*`);
 - fila interna de notificação estruturada por workspace (sem APNs externo nesta entrega);
 - integração opcional com provider real WAHA para QR/sync/send por workspace;
+- runtime iOS com provider primário WebKit Session (WAHA permanece apenas opcional por feature flag no bridge);
 - contrato compartilhado único entre app iOS e bridge;
 - cobertura de testes para endpoints principais.
 

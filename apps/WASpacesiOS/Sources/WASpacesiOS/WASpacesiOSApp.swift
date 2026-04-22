@@ -2,20 +2,15 @@
 import SwiftUI
 
 public struct WASpacesiOSAppRoot: App {
-  @StateObject private var model: IOSWebKitAppModel
+  @StateObject private var viewModel: IOSAppViewModel
 
   public init() {
-    do {
-      let instance = try IOSWebKitAppModel()
-      _model = StateObject(wrappedValue: instance)
-    } catch {
-      fatalError("Falha ao iniciar runtime iOS WebKit: \(error)")
-    }
+    _viewModel = StateObject(wrappedValue: IOSAppViewModel.makeLive())
   }
 
   public var body: some Scene {
     WindowGroup {
-      IOSWebKitRootView(model: model)
+      IOSRootView(viewModel: viewModel)
     }
   }
 }

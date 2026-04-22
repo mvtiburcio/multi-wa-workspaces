@@ -2,18 +2,26 @@ import Foundation
 import WorkspaceBridgeClient
 
 public struct AppConfiguration: Sendable {
+  public enum RuntimeSource: String, Sendable {
+    case webkitRuntime
+    case bridge
+  }
+
   public let bridgeBaseURL: URL
   public let bridgeToken: String
   public let allowInsecureTLS: Bool
+  public let runtimeSource: RuntimeSource
 
   public init(
     bridgeBaseURL: URL,
     bridgeToken: String,
-    allowInsecureTLS: Bool
+    allowInsecureTLS: Bool,
+    runtimeSource: RuntimeSource
   ) {
     self.bridgeBaseURL = bridgeBaseURL
     self.bridgeToken = bridgeToken
     self.allowInsecureTLS = allowInsecureTLS
+    self.runtimeSource = runtimeSource
   }
 
   public static func fromEnvironment() -> AppConfiguration {
@@ -33,10 +41,19 @@ public struct AppConfiguration: Sendable {
     let plistInsecure = info["WASPACES_BRIDGE_ALLOW_INSECURE_TLS"] as? Bool
     let allowInsecureTLS = envInsecure == "1" || (envInsecure == nil && (plistInsecure ?? false))
 
+    let envRuntimeSource = env["WASPACES_IOS_RUNTIME_SOURCE"]?.lowercased()
+    let runtimeSource: RuntimeSource
+    if envRuntimeSource == "bridge" {
+      runtimeSource = .bridge
+    } else {
+      runtimeSource = .webkitRuntime
+    }
+
     return AppConfiguration(
       bridgeBaseURL: baseURL,
       bridgeToken: token,
-      allowInsecureTLS: allowInsecureTLS
+      allowInsecureTLS: allowInsecureTLS,
+      runtimeSource: runtimeSource
     )
   }
 }

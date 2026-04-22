@@ -1,6 +1,9 @@
 import Foundation
+import WorkspaceApplicationServices
 import WorkspaceBridgeContracts
 import WorkspaceBridgeClient
+import WorkspacePersistence
+import WorkspaceSession
 
 @MainActor
 public final class IOSAppViewModel: ObservableObject {
@@ -60,6 +63,14 @@ public final class IOSAppViewModel: ObservableObject {
 
   public static func makeLive() -> IOSAppViewModel {
     let config = AppConfiguration.fromEnvironment()
+    if config.runtimeSource == .webkitRuntime {
+      do {
+        return try makeWebKitRuntime()
+      } catch {
+        fatalError("Falha ao iniciar runtime WebKit: \(error)")
+      }
+    }
+
     let session = BridgeNetworking.makeSession(allowInsecureTLS: config.allowInsecureTLS)
     let clientConfiguration = BridgeClientConfiguration(
       baseURL: config.bridgeBaseURL,
@@ -73,6 +84,22 @@ public final class IOSAppViewModel: ObservableObject {
       chatsProvider: SessionBridgeChatsProvider(syncProvider: client, realtimeProvider: client, sendProvider: client),
       updatesProvider: BridgeUpdatesProvider(baseURL: config.bridgeBaseURL, token: config.bridgeToken, session: session),
       callsProvider: BridgeCallsProvider(baseURL: config.bridgeBaseURL, token: config.bridgeToken, session: session),
+      localStore: WorkspaceLocalStore(),
+      runtimeMode: .live
+    )
+  }
+
+  public static func makeWebKitRuntime() throws -> IOSAppViewModel {
+    let store = try WorkspaceStoreFactory.makeDefaultStore()
+    let sessionEngine = WebSessionEngine(pool: WebViewPool())
+    let manager = WorkspaceManager(store: store, sessionController: sessionEngine)
+    let client = WebKitRuntimeBridgeClient(manager: manager)
+
+    return IOSAppViewModel(
+      workspaceProvider: SessionBridgeWorkspaceProvider(syncProvider: client, qrProvider: client),
+      chatsProvider: SessionBridgeChatsProvider(syncProvider: client, realtimeProvider: client, sendProvider: client),
+      updatesProvider: client,
+      callsProvider: client,
       localStore: WorkspaceLocalStore(),
       runtimeMode: .live
     )
@@ -362,6 +389,8 @@ public final class IOSAppViewModel: ObservableObject {
                 self.messages = state.messagesByConversation[selectedConversationID] ?? []
               }
             }
+
+            await loadSupplementaryData(for: workspaceID)
           }
         }
       } catch {

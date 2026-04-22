@@ -5,6 +5,22 @@ import WorkspaceBridgeContracts
 
 struct WASpacesiOSTests {
   @Test
+  func appConfigurationDefaultsToWebKitRuntime() {
+    unsetenv("WASPACES_IOS_RUNTIME_SOURCE")
+    let configuration = AppConfiguration.fromEnvironment()
+    #expect(configuration.runtimeSource == .webkitRuntime)
+  }
+
+  @Test
+  func appConfigurationAcceptsBridgeRuntimeOverride() {
+    setenv("WASPACES_IOS_RUNTIME_SOURCE", "bridge", 1)
+    defer { unsetenv("WASPACES_IOS_RUNTIME_SOURCE") }
+
+    let configuration = AppConfiguration.fromEnvironment()
+    #expect(configuration.runtimeSource == .bridge)
+  }
+
+  @Test
   func localStoreKeepsWorkspaceIsolation() async {
     let store = WorkspaceLocalStore()
 

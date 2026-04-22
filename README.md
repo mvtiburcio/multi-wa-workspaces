@@ -25,7 +25,7 @@ Entregue nesta versão:
 - testes unitários/integrados e CI com build/test macOS;
 - Session Bridge MVP com `Swift Vapor + SQLite + Bearer Token` (`sync`, `events`, `send`, `qr`);
 - app iOS nativo gerado por `xcodegen` em `apps/WASpacesiOSApp`, com runtime WebKit e isolamento real por workspace;
-- UX iOS com abas `Chats`, `Atualizações`, `Chamadas`, `Ajustes`, switcher de workspace e sessão real `web.whatsapp.com` embutida;
+- UX iOS nativa com abas `Chats`, `Atualizações`, `Chamadas`, `Ajustes`, switcher de workspace e render mobile alimentada por dados reais da sessão `web.whatsapp.com`;
 - bridge com erros padronizados (`BridgeErrorEnvelope`), retry/backoff configurável no client e fila interna de notificações (`/notifications`) sem APNs real nesta etapa.
 - bridge com provider real opcional WAHA para sessão por workspace (QR/sync/send) via variáveis `WASPACES_BRIDGE_WAHA_*`.
 
