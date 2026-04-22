@@ -1,42 +1,79 @@
 # Roadmap
 
-## Fase 0 - Planejamento (concluída)
-- consolidar requisitos;
-- documentar arquitetura e riscos;
-- preparar repositório open source.
+## Fase 0 - Planejamento Base (concluída)
 
-## Fase 1 - POC macOS (v1 implementada)
+- consolidar requisitos iniciais de `multi-workspace`;
+- documentar arquitetura macOS POC;
+- preparar repositório open source e governança.
+
+## Fase 1 - POC macOS QR-only (concluída)
+
 Data de referência: 21 de abril de 2026.
 
-- [x] criação de workspace;
-- [x] renomeação de workspace;
-- [x] remoção de workspace com limpeza transacional;
+- [x] criação/renomeação/remoção de workspace;
 - [x] isolamento de sessão por `WKWebsiteDataStore`;
-- [x] troca entre workspaces sem vazamento de sessão;
-- [x] persistência de metadados locais com SwiftData;
-- [x] monitoramento de estado (`loading`, `qrRequired`, `connected`, `failed`);
-- [x] testes unitários e integração;
-- [x] CI de build/test macOS.
+- [x] persistência local com SwiftData;
+- [x] rail + flyout e operações de edição/reordenação;
+- [x] tratamento de remoção resiliente de datastore em uso;
+- [x] testes unitários/integração e CI macOS.
 
-## Fase 2 - Robustez (pendente)
-- [x] sidebar fixa lado a lado (sem sobreposição no conteúdo);
-- [x] reordenação manual de workspaces com persistência;
-- [x] seleção de workspace com fluxo mais estável (idempotência + serialização);
-- [x] rail de ícones com flyout por hover;
-- [x] ações no header do flyout para `Editar` e `Config` (sem navegação por abas);
-- [x] edição em lote para exclusão e ordenação por drag;
-- [x] ícone/foto opcional por workspace com persistência local;
-- [x] recorte manual de avatar antes de salvar o ícone;
-- [x] fila local de limpeza pendente para datastores em uso;
-- [x] flyout com gatilho único no botão menu (hambúrguer);
-- [x] rail recolhido com todos os workspaces e troca rápida sem abrir flyout;
-- monitoramento técnico expandido (métricas por workspace);
-- otimização de memória para cenários com muitos workspaces;
-- testes de estabilidade de longa duração;
-- política explícita de reconexão e recuperação automática.
+## Fase 2 - Gate de Conformidade App Store (obrigatória antes do iOS)
 
-## Fase 3 - UX e operação (pendente)
-- refinamento visual e acessibilidade;
-- fluxos detalhados de erro/reconexão;
-- documentação operacional para uso interno;
-- guia de troubleshooting com casos recorrentes.
+Status: pendente.
+
+Critério de go/no-go:
+
+- validar enquadramento de política de distribuição App Store;
+- validar riscos legais e termos de uso de terceiros;
+- definir plano de incidentes/compliance antes de codificação iOS;
+- registrar decisão formal do gate com aprovação de produto e engenharia.
+
+Saída esperada:
+
+- checklist de conformidade assinado;
+- matriz de riscos com mitigação aceita;
+- decisão formal de continuidade para a trilha iOS.
+
+## Fase 3 - iOS Full Native (iPhone-first)
+
+Status: pendente.
+
+Escopo funcional v1:
+
+- onboarding por QR para vínculo de workspace;
+- inbox nativa completa com busca, filtros e estados;
+- thread nativa completa com composer, envio e status de entrega;
+- alternância de workspace sem vazamento;
+- cache local e sincronização incremental.
+
+Regras desta fase:
+
+- UI/UX 100% nativa iOS (não replicar design do WhatsApp Web);
+- parsing e normalização orientados a contrato interno de dados;
+- fallback híbrido controlado quando parser falhar.
+
+## Fase 4 - Session Bridge Cloud (tempo real contínuo)
+
+Status: pendente.
+
+Escopo:
+
+- worker dedicado por workspace para manter sessão e coleta contínua;
+- stream de eventos para inbox/thread em foreground/background;
+- pipeline de comandos de envio com confirmação de resultado;
+- push notifications operacionais por workspace.
+
+Critérios:
+
+- continuidade em background sem depender de WebView ativa no iPhone;
+- reconexão e recuperação incremental por cursor;
+- observabilidade ponta a ponta (latência, erro, fila, retries).
+
+## Fase 5 - Hardening para Publicação App Store
+
+Status: pendente.
+
+- segurança, privacidade e revisão final de compliance;
+- hardening de confiabilidade e performance em escala;
+- testes E2E, chaos tests e plano de rollback;
+- preparação de operação, suporte e documentação pública.

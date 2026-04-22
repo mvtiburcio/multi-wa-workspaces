@@ -1,11 +1,15 @@
 # WASpaces
 
-Projeto open source para operar múltiplos workspaces de WhatsApp Web com isolamento de sessão por QR, usando app macOS em SwiftUI + WebKit.
+Projeto open source para operar múltiplos workspaces com isolamento de sessão.
+Atualmente, a base implementada está na POC macOS via WebKit. A trilha iOS nativa já está planejada com Session Bridge Cloud.
 
 ## Status
-`POC v1 implementada` em 21 de abril de 2026.
+
+`POC macOS v1 implementada` em 21 de abril de 2026.
+`Planejamento iOS Native UI` documentado em 22 de abril de 2026.
 
 Entregue nesta versão:
+
 - criação, seleção, renomeação e remoção de workspaces;
 - isolamento de sessão por `WKWebsiteDataStore` com `UUID` dedicado;
 - persistência local de metadados com SwiftData;
@@ -19,10 +23,12 @@ Entregue nesta versão:
 - testes unitários/integrados e CI com build/test macOS.
 
 ## Requisitos
+
 - macOS 14+
 - Xcode com Swift 6+
 
 ## Execução Local
+
 ```bash
 swift build
 swift test
@@ -30,6 +36,7 @@ swift run WASpaces
 ```
 
 ## Estrutura
+
 - `apps/MultiWAWorkspacesApp`: app macOS (SwiftUI)
 - `packages/WorkspaceDomain`: modelos, protocolos e erros
 - `packages/WorkspacePersistence`: persistência SwiftData
@@ -37,8 +44,12 @@ swift run WASpaces
 - `packages/WorkspaceApplicationServices`: `WorkspaceManager` e orquestração
 
 ## Documentação
+
 - [Visão do Projeto](./docs/project-overview.md)
 - [Plano Técnico QR-only](./docs/technical-plan-qr-only.md)
+- [Plano Técnico iOS Native UI](./docs/technical-plan-ios-native-ui.md)
+- [PRD iOS](./docs/ios-prd.md)
+- [Aceite iOS](./docs/ios-acceptance.md)
 - [Arquitetura](./docs/architecture.md)
 - [Roadmap](./docs/roadmap.md)
 - [Guia de Desenvolvimento Local](./docs/local-development.md)
@@ -46,12 +57,15 @@ swift run WASpaces
 - [Riscos e Limites](./docs/risks-and-limits.md)
 - [Segurança Open Source](./docs/security-open-source.md)
 - [ADR-0001: Estratégia de Sessões](./docs/adr/0001-workspace-session-isolation.md)
+- [ADR-0002: iOS Native + Session Bridge](./docs/adr/0002-ios-native-session-bridge.md)
 
 ## Open Source
+
 - Licença: [MIT](./LICENSE)
 - Contribuição: [CONTRIBUTING.md](./CONTRIBUTING.md)
 - Conduta: [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
 - Segurança: [SECURITY.md](./SECURITY.md)
 
 ## Aviso importante
-Este projeto segue o modelo QR-only em WebKit. O uso de serviços de terceiros deve respeitar os termos e políticas vigentes desses serviços.
+
+A POC atual segue o modelo QR-only em WebKit no macOS. A trilha iOS exige gate obrigatório de conformidade App Store e arquitetura com Session Bridge Cloud antes da codificação. O uso de serviços de terceiros deve respeitar os termos e políticas vigentes desses serviços.
